@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates>
+    <!-- Define a new QWeb template that customizes the ListView buttons -->
+    <t t-name="button_sale.ListView.Buttons" t-inherit="web.ListView.Buttons">
+
+        <!-- Locate the div containing the existing list view buttons -->
+        <xpath expr="//div[hasclass('o_list_buttons')]" position="after">
+
+            <!-- Add a new button to download the template -->
+            <button type="button"
+                    class="btn btn-primary"
+                    style="margin-left: 10px;"
+                    t-on-click="DownloadTemplate">
+                Download Template
+            </button>
+
+            <!-- Add a new button to upload a template -->
+            <button type="button"
+                    class="btn btn-primary"
+                    style="margin-left: 10px;"
+                    t-on-click="OnUpload">
+                Upload Template
+            </button>
+        </xpath>
+    </t>
+</templates>

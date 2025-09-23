@@ -1,0 +1,16 @@
+<odoo>
+    <!-- Inherit the existing Sale Order tree (list) view to add custom functionality -->
+    <record id="sale_order_tree_inherit_add_button" model="ir.ui.view">
+        <field name="name">sale.order.list.inherit.add.button</field>
+        <field name="model">sale.order</field>
+        <!-- Reference the original Sale Order tree view to inherit -->
+        <field name="inherit_id" ref="sale.view_quotation_tree_with_onboarding"/>
+        <field name="arch" type="xml">
+            <!-- Use XPath to locate the <list> tag and modify its attributes -->
+            <xpath expr="//list" position="attributes">
+                <!-- Add a custom JS class to the list view for frontend behavior -->
+                <attribute name="js_class">button_in_tree</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>

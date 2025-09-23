@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="action_pdf_report_material_requisition" model="ir.actions.report">
+            <field name="name">Material Requisition Report</field>
+            <field name="model">material.requisition</field>
+            <field name="report_type">qweb-pdf</field>
+            <field name="report_name">home_kouzina_mr.report_material_requisition_template</field>
+            <field name="report_file">home_kouzina_mr.report_material_requisition_template</field>
+            <field name="paperformat_id" ref="base.paperformat_euro"/>
+            <field name="print_report_name">(object.name or '').replace('/', '_')</field>
+        </record>
+
+        <template id="report_material_requisition_template">
+            <t t-call="web.html_container">
+                <t t-foreach="docs" t-as="o">
+                    <t t-call="web.external_layout">
+                        <div class="page">
+                            <style>
+                                .header-table, .detail-table, .product-table, .approver-table {
+                                width: 100%;
+                                border-collapse: collapse;
+                                margin-bottom: 15px;
+                                }
+                                .header-table th, .header-table td,
+                                .detail-table th, .detail-table td,
+                                .product-table th, .product-table td,
+                                .approver-table th, .approver-table td {
+                                border: 1px solid #dee2e6;
+                                padding: 8px;
+                                text-align: left;
+                                }
+                                .header-table th, .detail-table th, .product-table th, .approver-table th {
+                                background-color: #e9ecef;
+                                font-weight: bold;
+                                }
+                                .text-center {
+                                text-align: center;
+                                }
+                                .text-right {
+                                text-align: right;
+                                }
+                                .company-name {
+                                font-size: 24px;
+                                font-weight: bold;
+                                text-align: center;
+                                margin-bottom: 20px;
+                                color: #0056b3; /* A nice blue color */
+                                }
+                                .report-title {
+                                font-size: 20px;
+                                font-weight: bold;
+                                text-align: center;
+                                margin-bottom: 20px;
+                                padding: 10px;
+                                background-color: #0056b3;
+                                color: white;
+                                border-radius: 5px;
+                                }
+                            </style>
+
+                            <div class="company-name">
+                                <span t-field="o.company_id.name"/>
+                            </div>
+
+                            <h2 class="report-title">Purchase Requisition</h2>
+
+                            <table class="header-table">
+                                <tr>
+                                    <th style="width: 25%;">Request Raised By:</th>
+                                    <td style="width: 25%;">
+                                        <span t-field="o.request_raised_by.name"/>
+                                    </td>
+                                    <th style="width: 25%;">Request Raised For:</th>
+                                    <td style="width: 25%;">
+                                        <span t-field="o.request_raised_for.name"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Department:</th>
+                                    <td>
+                                        <span t-field="o.department_id.name"/>
+                                    </td>
+                                    <th>Department:</th>
+                                    <td>
+                                        <span t-field="o.requested_for_department_id.name"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Job Position:</th>
+                                    <td>
+                                        <span t-field="o.job_position_id.name"/>
+                                    </td>
+                                    <th>Job Position:</th>
+                                    <td>
+                                        <span t-field="o.requested_for_job_position_id.name"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Reporting Manager:</th>
+                                    <td>
+                                        <span t-field="o.reporting_manager_id.name"/>
+                                    </td>
+                                    <th>Reporting Manager:</th>
+                                    <td>
+                                        <span t-field="o.requested_for_reporting_manager_id.name"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Purpose:</th>
+                                    <td>
+                                        <span t-field="o.purpose"/>
+                                    </td>
+                                    <th>Indent Date:</th>
+                                    <td>
+                                        <span t-field="o.indented_date"/>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Destination Location:</th>
+                                    <td>
+                                        <span t-field="o.destination_location_id.name"/>
+                                    </td>
+                                    <th>Required Date:</th>
+                                    <td>
+                                        <span t-field="o.required_date"/>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <h3 style="margin-top: 30px;">Product's</h3>
+                            <table class="product-table">
+                                <thead>
+                                    <tr>
+                                        <th class="text-center">SL.NO.</th>
+                                        <th>PRODUCT</th>
+                                        <th class="text-right">ONHAND QUANTITY</th>
+                                        <th class="text-right">REQUESTED QUANTITY</th>
+                                        <th class="text-right">QUANTITY SHIPPED</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <t t-set="total_qty" t-value="0"/>
+                                    <t t-set="total_shipped_qty" t-value="0"/>
+                                    <t t-set="i" t-value="1"/>
+                                    <t t-foreach="o.material_requisition_line_ids" t-as="line">
+                                        <tr>
+                                            <td class="text-center">
+                                                <span t-esc="i"/>
+                                                <t t-set="i" t-value="i+1"/>
+                                            </td>
+                                            <td>
+                                                <span t-field="line.product_id.name"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.onhand_quantity"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_uom_qty"/>
+                                                <t t-set="total_qty" t-value="total_qty + line.product_uom_qty"/>
+                                            </td>
+                                            <td class="text-right">
+                                                <span t-field="line.product_uom_qty"/>
+                                                <t t-set="total_shipped_qty"
+                                                   t-value="total_shipped_qty + line.product_uom_qty"/>
+                                            </td>
+                                        </tr>
+                                    </t>
+                                    <tr>
+                                        <td colspan="2" class="text-right">
+                                            <b>Total:</b>
+                                        </td>
+                                        <td></td>
+                                        <td class="text-right">
+                                            <b>
+                                                <span t-esc="total_qty"/>
+                                            </b>
+                                        </td>
+                                        <td class="text-right">
+                                            <b>
+                                                <span t-esc="total_shipped_qty"/>
+                                            </b>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </t>
+                </t>
+            </t>
+        </template>
+    </data>
+</odoo>
