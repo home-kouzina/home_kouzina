@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form view for Material Requisition -->
+    <record id="material_requisition_form_view" model="ir.ui.view">
+        <field name="name">material.requisition.form</field>
+        <field name="model">material.requisition</field>
+        <field name="arch" type="xml">
+            <form string="Material Requisition">
+                <header>
+                    <!-- Action buttons based on state -->
+                    <button name="action_request" string="Request" type="object"
+                            invisible="state not in ['draft']"
+                            lass="btn-primary"/>
+                    <button name="action_accept_request" string="Accept Request" type="object"
+                            invisible="state not in ['request']"
+                            class="btn-success"/>
+                    <button name="action_receive" string="Receive" type="object"
+                            class="btn-primary"
+                            invisible="state not in ['internal_transit']"
+                    />
+                    <button name="action_cancel" string="Cancel" type="object"
+                            invisible="state not in ['draft', 'request', 'request_accepted', 'internal_transit']"
+                    />
+                    <!-- Status bar showing the current state -->
+                    <field name="state" widget="statusbar"
+                           statusbar_visible="draft,request,internal_transit,received,cancel"/>
+                </header>
+                <sheet>
+                    <!-- Statistical buttons for related orders and transfers -->
+                    <div name="button_box" class="oe_button_box">
+                        <button name="action_view_purchase_orders"
+                                class="oe_stat_button"
+                                icon="fa-shopping-cart"
+                                type="object"
+                                invisible="purchase_order_count == 0">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="purchase_order_count"/>
+                                </span>
+                                <span class="o_stat_text">Purchase Orders</span>
+                            </div>
+                        </button>
+                        <button name="action_view_sale_orders"
+                                class="oe_stat_button"
+                                icon="fa-file-text-o"
+                                type="object"
+                                invisible="sale_order_count == 0">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="sale_order_count"/>
+                                </span>
+                                <span class="o_stat_text">Sale Orders</span>
+                            </div>
+                        </button>
+                        <button name="action_view_transfers"
+                                class="oe_stat_button"
+                                icon="fa-truck"
+                                type="object"
+                                invisible="transfer_count == 0">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_value">
+                                    <field name="transfer_count"/>
+                                </span>
+                                <span class="o_stat_text">Internal Transfer</span>
+                            </div>
+                        </button>
+                        <button name="action_print_requisition_report"
+                                class="oe_stat_button"
+                                icon="fa-print"
+                                type="object">
+                            <div class="o_field_widget o_stat_info">
+                                <span class="o_stat_text">Print Report</span>
+                            </div>
+                        </button>
+                    </div>
+                     <!-- Ribbon indicators for different states -->
+                    <widget name="web_ribbon" text="Draft"
+                            invisible="state not in ['draft']" bg_color="bg-info"/>
+                    <widget name="web_ribbon" text="Request Sent"
+                            invisible="state not in ['request']" bg_color="bg-warning"/>
+                    <widget name="web_ribbon" text="Request Accepted"
+                            invisible="state not in ['request_accepted']" bg_color="bg-success"/>
+                    <widget name="web_ribbon" text="In Transit"
+                            invisible="state not in ['internal_transit']" bg_color="bg-primary"/>
+                    <widget name="web_ribbon" text="Received"
+                            invisible="state not in ['received']" bg_color="bg-dark"/>
+                    <widget name="web_ribbon" text="Cancelled"
+                            invisible="state not in ['cancel']" bg_color="bg-secondary"/>
+                    <!-- Requisition reference displayed as title -->
+                    <div class="oe_title">
+                        <h1>
+                            <field name="name" readonly="1"/>
+                        </h1>
+                    </div>
+                    <!-- Request details and requested for information -->
+                    <group>
+                        <group string="Request Details">
+                            <field name="request_raised_by"
+                                   options="{'no_create': True, 'no_edit': True, 'no_open': True}" readonly="1"/>
+                            <field name="department_id" readonly="1"/>
+                            <field name="job_position_id" readonly="1"/>
+                            <field name="reporting_manager_id" readonly="1"/>
+                            <field name="purpose" readonly="state not in ['draft']"/>
+                            <field name="source_location_id" readonly="state not in ['draft']"/>
+                            <field name="source_location_company_id" readonly="state not in ['draft']" invisible="1"/>
+                            <field name="destination_location_id" readonly="state not in ['draft']"/>
+                            <field name="destination_location_company_id" readonly="state not in ['draft']" invisible="1"/>
+                            <field name="signature" widget="signature" readonly="state not in ['draft']"/>
+                        </group>
+                        <group string="Requested For">
+                            <field name="request_raised_for"
+                                   options="{'no_create': True, 'no_edit': True, 'no_open': True}"
+                                   readonly="state not in ['draft']"/>
+                            <field name="requested_for_department_id" readonly="1"/>
+                            <field name="requested_for_job_position_id" readonly="1"/>
+                            <field name="requested_for_reporting_manager_id" readonly="1"/>
+                            <field name="required_date" readonly="state not in ['draft']"/>
+                        </group>
+                    </group>
+                    <!-- Requested products notebook page -->
+                    <notebook>
+                        <page string="Requested Products" name="requested_products">
+                            <field name="material_requisition_line_ids" readonly="state not in ['draft']">
+                                <list editable="bottom">
+                                    <field name="product_id"
+                                           options="{'no_create': True, 'no_edit': True, 'no_open': True}"/>
+                                    <field name="product_uom_qty"/>
+                                    <field name="product_uom" groups="uom.group_uom"/>
+                                    <field name="onhand_quantity" string="Destination On Hand Qty"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+     <!-- List view for Material Requisitions -->
+    <record id="material_requisition_list_view" model="ir.ui.view">
+        <field name="name">material.requisition.list</field>
+        <field name="model">material.requisition</field>
+        <field name="arch" type="xml">
+            <list string="Material Requisitions" decoration-info="state == 'draft'"
+                  decoration-success="state == 'internal_transfer_created'"
+                  decoration-danger="state in ('cancel')">
+                <!-- Header button for exporting Excel report -->
+                <header>
+                    <button name="action_open_purchase_requisition_excel_wizard"
+                            string="Excel Report"
+                            type="object"
+                            class="oe_stat_button"
+                            icon="fa-file-excel-o"
+                    />
+                </header>
+                <field name="name" string="Indent Reference"/>
+                <field name="request_raised_by" string="Request Raised By"/>
+                <field name="request_raised_for" string="User"/>
+                <field name="required_date"/>
+                <field name="state" widget="badge"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Search view for Material Requisitions -->
+    <record id="material_requisition_search_view" model="ir.ui.view">
+        <field name="name">material.requisition.search</field>
+        <field name="model">material.requisition</field>
+        <field name="arch" type="xml">
+            <search string="Material Requisition">
+                <field name="name"/>
+                <field name="request_raised_by"/>
+                <field name="request_raised_for"/>
+                <field name="purpose"/>
+                <field name="state"/>
+                <field name="picking_id"/>
+                <filter name="my_requisitions" string="My Requisitions"
+                        domain="[('request_raised_by.user_id', '=', uid)]"/>
+                <separator/>
+                <group expand="0" string="Group By">
+                    <filter string="Status" name="group_by_state" context="{'group_by': 'state'}"/>
+                    <filter string="Request Raised By" name="group_by_request_raised_by"
+                            context="{'group_by': 'request_raised_by'}"/>
+                    <filter string="Department" name="group_by_department_id"
+                            context="{'group_by': 'department_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action to open Material Requisitions -->
+    <record id="material_requisition_action" model="ir.actions.act_window">
+        <field name="name">Material Requisitions</field>
+        <field name="res_model">material.requisition</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Material Requisition
+            </p>
+            <p>
+                Manage requests for stock items from various departments.
+            </p>
+        </field>
+    </record>
+
+     <!-- Menus -->
+    <menuitem id="material_requisition_root_menu" name="Material Requisition"
+              sequence="10" web_icon="home_kouzina_mr,static/description/icon.png"/>
+    <menuitem id="material_requisition_menu_requests" name="Requisitions"
+              parent="material_requisition_root_menu"
+              action="material_requisition_action" sequence="10"/>
+</odoo>
