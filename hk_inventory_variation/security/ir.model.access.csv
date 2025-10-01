@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_inventory_variation_user,access.inventory.variation.user,model_inventory_variation,group_inventory_variation_user,1,1,1,0
+access_inventory_variation_line_user,access.inventory.variation.line.user,model_inventory_variation_line,group_inventory_variation_user,1,1,1,0
+access_inventory_variation_manager,access.inventory.variation.manager,model_inventory_variation,group_inventory_variation_manager,1,1,1,1
+access_inventory_variation_line_manager,access.inventory.variation.line.manager,model_inventory_variation_line,group_inventory_variation_manager,1,1,1,1
+

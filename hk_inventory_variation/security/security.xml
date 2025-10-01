@@ -1,0 +1,19 @@
+<odoo>
+    <record id="module_category_inventory_variation" model="ir.module.category">
+        <field name="name">Inventory Variation</field>
+        <field name="sequence">10</field>
+    </record>
+
+    <record id="group_inventory_variation_user" model="res.groups">
+        <field name="name">Inventory Variation User</field>
+        <field name="category_id" ref="module_category_inventory_variation"/>
+        <field name="comment">Can create and manage inventory variation sessions, enter counts.</field>
+    </record>
+
+    <record id="group_inventory_variation_manager" model="res.groups">
+        <field name="name">Inventory Variation Manager</field>
+        <field name="category_id" ref="module_category_inventory_variation"/>
+        <field name="implied_ids" eval="[(4, ref('group_inventory_variation_user'))]"/>
+        <field name="comment">Can confirm, export, and reconcile inventory variations.</field>
+    </record>
+</odoo>
