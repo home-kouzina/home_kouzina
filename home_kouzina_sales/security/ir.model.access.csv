@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_product_packages,access.product.packages,model_product_packages,,1,1,1,1
+
+
+
