@@ -10,8 +10,12 @@
     """,
     'depends': ['base', 'sale_management','sale','product'],
     'data': [
+        'security/ir.model.access.csv',
         'views/sale_order_view.xml',
         'views/product_views.xml',
+        'views/product_packages_views.xml',
+        'views/sale_order_line_views.xml',
+        'views/stock_picking.xml',
     ],
     "assets": {
         "web.assets_backend": [

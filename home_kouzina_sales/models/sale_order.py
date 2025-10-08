@@ -1,7 +1,7 @@
 from odoo import models, fields, _
 import xlsxwriter
 from odoo import models, api, _
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
 import base64
 import io
 import openpyxl
@@ -13,6 +13,61 @@ class SaleOrder(models.Model):
 
     template_file = fields.Binary("Template File")
     template_filename = fields.Char("Template Filename", default="sale_order_template.xlsx")
+
+    def action_confirm(self):
+        res = super().action_confirm()
+        for order in self:
+            # Get the delivery picking created for this sale order
+            picking = self.env['stock.picking'].search([
+                ('origin', '=', order.name),
+                ('state', '!=', 'cancel'),
+                ('picking_type_id.code', '=', 'outgoing')
+            ], limit=1)
+
+            # ✅ Dictionary to accumulate total qty per package product
+            package_totals = {}
+
+            for line in order.order_line:
+                product_qty = line.product_uom_qty  # Quantity of main product
+
+                for package in line.package_ids:
+                    package_product = package.product_id
+
+                    # Skip consumables
+                    if package_product.type != 'consu':
+                        continue
+
+                    # Accumulate total quantity for this package product
+                    package_totals[package_product] = package_totals.get(package_product, 0) + product_qty
+
+            # ✅ Now process each package product just once
+            for package_product, total_qty in package_totals.items():
+                # Check stock availability
+                stock_location = self.env.ref('stock.stock_location_stock')
+                quants = self.env['stock.quant'].sudo().search([
+                    ('product_id', '=', package_product.id),
+                    ('location_id', '=', stock_location.id)
+                ])
+
+                total_qty_available = sum(quants.mapped('quantity'))
+                if total_qty_available < total_qty:
+                    raise ValidationError(
+                        f"Not enough stock for package product '{package_product.display_name}'"
+                    )
+
+                # ✅ Create ONE stock move for the total quantity
+                if picking:
+                    self.env['stock.move'].create({
+                        'name': package_product.display_name,
+                        'product_id': package_product.id,
+                        'product_uom_qty': total_qty,
+                        'product_uom': package_product.uom_id.id,
+                        'picking_id': picking.id,
+                        'location_id': picking.location_id.id,
+                        'location_dest_id': picking.location_dest_id.id,
+                    })
+
+        return res
 
     def action_download_template(self):
         """
