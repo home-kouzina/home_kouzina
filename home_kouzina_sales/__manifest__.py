@@ -16,6 +16,8 @@
         'views/product_packages_views.xml',
         'views/sale_order_line_views.xml',
         'views/stock_picking.xml',
+        'views/marketplace_master_views.xml',
+        'wizard/marketplace_order_import_wizard_views.xml',
     ],
     "assets": {
         "web.assets_backend": [

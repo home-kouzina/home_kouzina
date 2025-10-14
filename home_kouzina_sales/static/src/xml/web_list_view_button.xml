@@ -11,15 +11,14 @@
                     class="btn btn-primary"
                     style="margin-left: 10px;"
                     t-on-click="DownloadTemplate">
-                Download Template
+                    Download Template
             </button>
 
-            <!-- Add a new button to upload a template -->
             <button type="button"
                     class="btn btn-primary"
                     style="margin-left: 10px;"
                     t-on-click="OnUpload">
-                Upload Template
+                    Import Marketplace Orders
             </button>
         </xpath>
     </t>

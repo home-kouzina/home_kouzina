@@ -69,6 +69,16 @@ class SaleOrder(models.Model):
 
         return res
 
+    def open_marketplace_import_wizard(self):
+        """ Opens the marketplace order import wizard. """
+        return {
+            'name': 'Import Marketplace Orders',
+            'type': 'ir.actions.act_window',
+            'res_model': 'marketplace.order.import.wizard',
+            'view_mode': 'form',
+            'target': 'new',
+        }
+
     def action_download_template(self):
         """
         Generate Excel template for sale orders and return it as a downloadable file.
