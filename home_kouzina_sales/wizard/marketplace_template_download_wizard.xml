@@ -1,0 +1,27 @@
+<odoo>
+    <record id="view_marketplace_template_download_wizard" model="ir.ui.view">
+        <field name="name">marketplace.template.download.wizard.form</field>
+        <field name="model">marketplace.template.download.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Download XLSX Template">
+                <group>
+                    <field name="marketplace_id" options="{'no_create': True}"/>
+                </group>
+                <footer>
+                    <button string="Download"
+                            name="action_download_template"
+                            type="object"
+                            class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_marketplace_template_download_wizard" model="ir.actions.act_window">
+        <field name="name">Download XLSX Template</field>
+        <field name="res_model">marketplace.template.download.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

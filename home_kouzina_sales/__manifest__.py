@@ -8,7 +8,7 @@
         - Download Template: download a blank Excel template.
         - Upload Template: upload filled Excel and create Sale Orders.
     """,
-    'depends': ['base', 'sale_management','sale','product'],
+    'depends': ['base', 'sale_management','sale','product','marketplace'],
     'data': [
         'security/ir.model.access.csv',
         'views/sale_order_view.xml',
@@ -18,6 +18,7 @@
         'views/stock_picking.xml',
         'views/marketplace_master_views.xml',
         'wizard/marketplace_order_import_wizard_views.xml',
+        'wizard/marketplace_template_download_wizard.xml',
     ],
     "assets": {
         "web.assets_backend": [
