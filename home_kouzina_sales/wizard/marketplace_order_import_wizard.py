@@ -59,6 +59,30 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Shipping Amount': 'shipping_amount',
         'Currency': 'currency',
         'Order Tag': 'order_tag',
+        # ---------- Flipkart ----------
+        'Flipkart Order ID': 'flipkart_order_id',
+        'Flipkart Order Date': 'flipkart_order_date',
+        'Flipkart Payment Status': 'flipkart_payment_status',
+        'Flipkart Order Status': 'flipkart_order_status',
+        'Flipkart Total Amount': 'flipkart_total_amount',
+        # ---------- Amazon ----------
+        'Amazon Order ID': 'amazon_order_id',
+        'Amazon Order Date': 'amazon_order_date',
+        'Amazon Payment Status': 'amazon_payment_status',
+        'Amazon Order Status': 'amazon_order_status',
+        'Amazon Total Amount': 'amazon_total_amount',
+        # ---------- Blinkit ----------
+        'Blinkit Order ID': 'blinkit_order_id',
+        'Blinkit Delivery Slot': 'blinkit_delivery_slot',
+        'Blinkit Payment Status': 'blinkit_payment_status',
+        'Blinkit Order Status': 'blinkit_order_status',
+        'Blinkit Total Amount': 'blinkit_total_amount',
+        # ---------- Shopify ----------
+        'Shopify Order ID': 'shopify_order_id',
+        'Shopify Order Date': 'shopify_order_date',
+        'Shopify Payment Status': 'shopify_payment_status',
+        'Shopify Order Status': 'shopify_order_status',
+        'Shopify Total Amount': 'shopify_total_amount',
     }
 
     @api.onchange('xlsx_file')
@@ -418,6 +442,30 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         # Original headers from Excel
         raw_headers = [str(h).strip() for h in rows[0]]
 
+        # Detect marketplace based on headers
+        marketplace = None
+        if any(h.startswith('Flipkart') for h in raw_headers):
+            marketplace = 'Flipkart'
+        elif any(h.startswith('Amazon') for h in raw_headers):
+            marketplace = 'Amazon'
+        elif any(h.startswith('Blinkit') for h in raw_headers):
+            marketplace = 'Blinkit'
+        elif any(h.startswith('Shopify') for h in raw_headers):
+            marketplace = 'Shopify'
+
+        if not marketplace:
+            raise UserError("Cannot detect marketplace from uploaded file. Check headers.")
+
+        marketplace_id = self.env['marketplace.master'].search([('name', '=', marketplace)], limit=1)
+        if not marketplace_id:
+            raise UserError(f"Marketplace '{marketplace}' not found in system.")
+
+        if self.marketplace_id.name.strip().lower() != marketplace.strip().lower():
+            raise UserError(
+                f"Uploaded file belongs to '{marketplace}' marketplace, "
+                f"but you selected '{self.marketplace_id.name}'. Please upload the correct file."
+            )
+
         # Map headers to internal field names
         headers = []
         for h in raw_headers:
@@ -430,6 +478,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             row_dict = dict(zip(headers, r))
             # Optional: strip strings in row values
             row_dict = {k: (v.strip() if isinstance(v, str) else v) for k, v in row_dict.items()}
+            # Include marketplace name for downstream use
+            row_dict['marketplace_name'] = marketplace
             data_rows.append(row_dict)
 
         return headers, data_rows
@@ -548,6 +598,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
         # c) Check if sale.order already exists
         origin = f"marketplace:{(self.marketplace_id.name or 'unknown')}|{marketplace_order_id}"
+        marketplace_type = (self.marketplace_id.name or '').lower()
         existing_order = self.env['sale.order'].search([('origin', '=', origin)], limit=1)
         if existing_order:
             msg = ("Sale order %s already exists") % existing_order.name
@@ -567,6 +618,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 'stock.warehouse0').id),
             # sales team - keep your previous default
             'team_id': self.env.ref('sales_team.salesteam_website_sales').id,
+            'marketplace_type': marketplace_type
         }
 
         # Tag logic: marketplace specific tag, fallback to marketplace name tag, CSV override 'order_tag' if present
@@ -587,6 +639,24 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 tag = self.env['crm.tag'].create({'name': order_tag_name})
             order_vals.setdefault('tag_ids', []).append((4, tag.id))
 
+        # --- Include marketplace-specific fields if present ---
+        marketplace_fields = [
+            # Flipkart
+            'flipkart_order_id', 'flipkart_order_date', 'flipkart_payment_status', 'flipkart_order_status',
+            'flipkart_total_amount',
+            # Amazon
+            'amazon_order_id', 'amazon_order_date', 'amazon_payment_status', 'amazon_order_status',
+            'amazon_total_amount',
+            # Blinkit
+            'blinkit_order_id', 'blinkit_delivery_slot', 'blinkit_payment_status', 'blinkit_order_status',
+            'blinkit_total_amount',
+            # Shopify
+            'shopify_order_id', 'shopify_order_date', 'shopify_payment_status', 'shopify_order_status',
+            'shopify_total_amount',
+        ]
+        for fld in marketplace_fields:
+            if first_row.get(fld):
+                order_vals[fld] = first_row.get(fld)
         sale_order = self.env['sale.order'].create(order_vals)
 
         # e) Create lines
@@ -865,7 +935,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             combined = '; '.join(filter(None, [earlier] + msgs))
             row_copy['Error'] = combined
 
-            # 🔴 NEW LOGIC: determine Status based on log messages
             if any('fail' in m.lower() or 'error' in m.lower() for m in msgs):
                 row_copy['Status'] = 'Failed'
             elif not row_copy.get('Status'):

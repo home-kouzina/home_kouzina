@@ -12,13 +12,14 @@ export class SaleListController extends ListController {
         this.notification = useService("notification");
     }
 
-    DownloadTemplate() {
-        const url = "/home_kouzina_sales/static/src/files/sale_order_template.xlsx";
-
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "sale_order_template.xlsx";
-        link.click();
+    async DownloadTemplate() {
+    await this.actionService.doAction({
+        type: "ir.actions.act_window",
+        res_model: "marketplace.template.download.wizard",
+        views: [[false, "form"]],
+        target: "new",
+        context: {},
+    });
     }
 
     async OnUpload() {
