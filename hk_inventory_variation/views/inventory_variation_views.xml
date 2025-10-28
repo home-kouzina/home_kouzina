@@ -34,10 +34,12 @@
                 <button name="action_create_excel_report"
                         type="object"
                         icon="fa-file-excel-o"
+                        title="Export selected variations as Excel file"
                         help="Export selected variations as Excel file"/>
                 <button name="action_download_pdf_report"
                         type="object"
                         icon="fa-file-pdf-o"
+                        title="Generate and download PDF report"
                         help="Generate and download PDF report"/>
             </list>
         </field>
