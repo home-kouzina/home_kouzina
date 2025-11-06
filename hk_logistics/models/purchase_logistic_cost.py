@@ -27,7 +27,7 @@ class PurchaseOrder(models.Model):
             per_unit_logistic = total_qty / logistic_total
 
             for line in product_lines:
-                old_price = line.product_id.price_unit
+                old_price = line.price_unit
                 new_price = old_price + per_unit_logistic
                 line.product_id.standard_price = new_price
         return res
