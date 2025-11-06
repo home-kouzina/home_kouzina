@@ -10,3 +10,4 @@ class ProductProduct(models.Model):
         string="COG Before Sale",
         help="Cost of goods before the product is sold.")
     is_finished_good = fields.Boolean(string="Is Finished Good", related="product_tmpl_id.is_finished_good")
+    regional_language_name = fields.Char("Regional Language Name",related="product_tmpl_id.regional_language_name")

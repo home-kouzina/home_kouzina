@@ -1,0 +1,70 @@
+<odoo>
+    <template id="hk_inventory_pdf">
+        <t t-call="web.html_container">
+            <div class="page"
+                 style="font-family: 'Helvetica', sans-serif; padding: 20px; margin: 10px;">
+
+                <!-- Header -->
+                <div style="text-align:center; margin-bottom:15px; border-bottom:3px solid #1F618D; padding-bottom:10px;">
+                    <h2 style="color:#154360; font-weight:bold; margin:0;">HK Inventory Report</h2>
+                    <p style="font-size:12px; color:#424949;">
+                        Generated on:
+                        <span style="font-weight:bold; color:#1A5276;">
+                            <t t-esc="generated_on"/>
+                        </span>
+                    </p>
+                </div>
+
+                <!-- Table -->
+                <table class="table table-sm"
+                       style="width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; border:1px solid #D5D8DC;">
+                    <thead style="background-color:#85C1E9; color:#154360; font-weight:bold;">
+                        <tr>
+                            <th style="padding:8px; border:1px solid #AED6F1;">Product</th>
+                            <th style="padding:8px; border:1px solid #AED6F1;">Regional Name</th>
+                            <t t-foreach="warehouses" t-as="wh">
+                                <th style="padding:8px; text-align:center; border:1px solid #AED6F1;">
+                                    <t t-esc="wh.name"/>
+                                </th>
+                            </t>
+                            <th style="padding:8px; text-align:center; border:1px solid #AED6F1;">Total</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <!-- Sort docs in descending order by product name -->
+                        <t t-set="sorted_docs" t-value="sorted(docs, key=lambda d: d['product'], reverse=True)"/>
+                        <t t-foreach="sorted_docs" t-as="doc" t-foreach-index="doc_index">
+                            <t t-set="bg_color" t-value="'#EBF5FB' if (doc_index % 2 == 0) else '#FFFFFF'"/>
+                            <tr t-att-style="'background-color: %s;' % bg_color">
+                                <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
+                                    <t t-esc="doc['product']"/>
+                                </td>
+                                <td style="padding:8px; border:1px solid #D6EAF8; color:#2E4053;">
+                                    <t t-esc="doc.get('regional_language_name', '')"/>
+                                </td>
+                                <t t-foreach="doc['quantities']" t-as="q">
+                                    <td style="padding:8px; text-align:center; border:1px solid #D6EAF8; color:#154360;">
+                                        <t t-esc="q['qty']"/>
+                                    </td>
+                                </t>
+                                <td style="padding:8px; text-align:center; font-weight:bold; color:#1A5276; border:1px solid #AED6F1;">
+                                    <t t-esc="doc['total']"/>
+                                </td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+
+    <!-- Report Action -->
+    <record id="action_hk_inventory_pdf" model="ir.actions.report">
+        <field name="name">HK Inventory PDF</field>
+        <field name="model">hk.inventory.report.wizard</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hk_inventory_report.hk_inventory_pdf</field>
+        <field name="print_report_name">'HK Inventory Report - %s' % (object.create_date or '')</field>
+    </record>
+</odoo>

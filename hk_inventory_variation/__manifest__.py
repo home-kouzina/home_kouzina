@@ -1,7 +1,7 @@
 {
     'name': 'Inventory Variation',
     'version': '18.0',
-    'category': 'Inventory/Reporting',
+    'category': 'Home Kouzina',
     'summary': 'Physical vs System stock variance tracking and reporting',
     'description': """
     Inventory Variation

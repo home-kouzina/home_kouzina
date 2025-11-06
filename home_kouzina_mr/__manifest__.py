@@ -1,6 +1,6 @@
 {
     'name': 'Material Requisition',
-    'category': 'Inventory',
+    'category': 'Home Kouzina',
     'summary': 'Streamlined process for requesting and acquiring stock items',
     'version': '18.0',
     'description': """

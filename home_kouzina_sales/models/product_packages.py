@@ -16,3 +16,4 @@ class SaleOrderLine(models.Model):
     _inherit = 'sale.order.line'
 
     package_ids = fields.Many2many('product.packages', string='Product Packaging')
+    regional_language_name = fields.Char("Regional Language Name",related="product_template_id.regional_language_name")
