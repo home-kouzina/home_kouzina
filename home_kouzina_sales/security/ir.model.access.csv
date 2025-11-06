@@ -4,8 +4,4 @@ access_marketplace_master,marketplace.master,model_marketplace_master,,1,1,1,
 access_marketplace_import_wizard,marketplace.order.import.wizard,model_marketplace_order_import_wizard,,1,1,1,1
 access_marketplace_template_download_wizard,marketplace.template.download.wizard,model_marketplace_template_download_wizard,,1,1,1,1
 access_marketplace_import_log,marketplace.import.log,model_marketplace_import_log,,1,1,1,1
-
-
-
-
-
+access_reorder_point_wizard,reorder.point.wizard,model_reorder_point_wizard,,1,1,1,1

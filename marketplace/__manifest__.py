@@ -3,7 +3,7 @@
     'name': 'Marketplace Integration',
     'version': '1.0',
     'summary': 'Integrate custom fields for different marketplaces in Sales Orders.',
-    'category': 'Sales',
+    'category': 'Home Kouzina',
     'depends': [
         'sale_management',
     ],
