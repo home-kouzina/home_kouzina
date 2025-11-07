@@ -22,10 +22,10 @@ class MaterialRequisition(models.Model):
         ('received', 'Received'),
         ('cancel', 'Cancelled'),
     ], string='Status', default='draft', tracking=True)
-    source_location_id = fields.Many2one('stock.location', string="Source Location")
+    source_location_id = fields.Many2one('stock.location', string="Source Location",default=lambda self: self._get_default_source_location())
     source_location_company_id = fields.Many2one('res.company', string="Source Location Company", related='source_location_id.company_id')
     destination_location_id = fields.Many2one('stock.location', string='Destination Location', required=True,
-                                              domain="[('usage','=','internal')]")
+                                              domain="[('usage','=','internal')]", default=lambda self: self._get_default_destination_location())
     destination_location_company_id = fields.Many2one('res.company', string="Destination Location Company", related='destination_location_id.company_id')
     indented_date = fields.Datetime(string='Indent Date', default=fields.Datetime.now(), readonly=True)
     request_raised_by = fields.Many2one('hr.employee', string='Request Raised By', required=True,
@@ -58,6 +58,35 @@ class MaterialRequisition(models.Model):
     purchase_order_count = fields.Integer(string="PO Count", compute="_compute_counts")
     sale_order_count = fields.Integer(string="SO Count", compute="_compute_counts")
     transfer_count = fields.Integer(string="Transfer Count", compute="_compute_counts")
+    purchase_order_id = fields.Many2one('purchase.order',string="Purchase Order")
+    sale_order_id = fields.Many2one('sale.order',string="Sale Order")
+
+    # -------------------------------------------------------------------------
+    # Default location methods based on boolean flags
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Default location methods based on boolean flags
+    # -------------------------------------------------------------------------
+    @api.model
+    def _get_default_source_location(self):
+        """Get default source location across all companies."""
+        # Allow search across all companies (ignore active company restriction)
+        all_companies = self.env['res.company'].sudo().search([]).ids
+        location = self.env['stock.location'].sudo().with_context(
+            allowed_company_ids=all_companies,
+            force_company=False
+        ).search([('is_source_location', '=', True)], limit=1)
+        return location.id if location else False
+
+    @api.model
+    def _get_default_destination_location(self):
+        """Get default destination location across all companies."""
+        all_companies = self.env['res.company'].sudo().search([]).ids
+        location = self.env['stock.location'].sudo().with_context(
+            allowed_company_ids=all_companies,
+            force_company=False
+        ).search([('is_destination_location', '=', True)], limit=1)
+        return location.id if location else False
 
     @api.depends('purchase_order_ids', 'sale_order_ids', 'picking_id')
     def _compute_counts(self):
@@ -107,11 +136,11 @@ class MaterialRequisition(models.Model):
         """Receives: confirm POs, validate receipts & mark as Received """
         for rec in self:
             # Ensure all related Sale Orders are confirmed
-            if any(so.state != 'sale' for so in rec.sale_order_ids):
+            if any(so.state != 'sale' for so in rec.sale_order_id):
                 raise ValidationError(_("You cannot receive until all related Sale Orders are confirmed."))
 
             # Ensure all Delivery Orders for these Sale Orders are validated (done)
-            for so in rec.sale_order_ids:
+            for so in rec.sale_order_id:
                 delivery_orders = self.env['stock.picking'].search([
                     ('origin', '=', so.name),
                     ('picking_type_code', '=', 'outgoing')
@@ -125,7 +154,7 @@ class MaterialRequisition(models.Model):
                             _("Delivery Order %s for Sale Order %s is not done yet." % (picking.name, so.name)))
 
             # Confirm all related Purchase Orders if still draft
-            for po in rec.purchase_order_ids:
+            for po in rec.purchase_order_id:
                 if po.state in ('draft', 'sent'):
                     po.button_confirm()
 
@@ -145,19 +174,33 @@ class MaterialRequisition(models.Model):
     # ---------------------------------------------
     def _create_purchase_order(self):
         """Create a purchase order for the requisition and link it to the record."""
-
-        PurchaseOrder = self.env['purchase.order']
         for rec in self:
-            # Create a vendor based on the source location
-            vendor = self.env['res.partner'].create({
-                'name': rec.source_location_company_id.name,
-                'supplier_rank': 1,
-            })
+            company = rec.company_id
+            # Set up environment for the correct company
+            env_company = self.with_context(
+                force_company=rec.source_location_company_id.id,
+                allowed_company_ids=self.env.user.company_ids.ids  # ✅ allow all companies
+            ).env
+
+            PurchaseOrder = env_company['purchase.order']
+            Partner = env_company['res.partner']
+
+            # Find or create vendor in the correct company
+            vendor = Partner.sudo().search([
+                ('name', '=', rec.source_location_company_id.name)
+            ], limit=1)
+            if not vendor:
+                vendor = Partner.sudo().create({
+                    'name': rec.source_location_company_id.name or "Vendor",
+                    'supplier_rank': 1,
+                    'company_id': company.id,
+                })
 
             # Prepare purchase order values
             po_vals = {
                 'partner_id': vendor.id,
                 'origin': rec.name,
+                'company_id': rec.source_location_company_id.id,
                 'requisition_id': rec.id,
                 'order_line': [],
             }
@@ -172,42 +215,58 @@ class MaterialRequisition(models.Model):
                     'price_unit': line.product_id.standard_price,
                 }))
 
-            # Create the purchase order and link it to the requisition
-            po = PurchaseOrder.create(po_vals)
-            rec.purchase_order_ids = [(4, po.id)]
+            # Create the purchase order in the correct company
+            po = PurchaseOrder.sudo().create(po_vals)
+            rec.purchase_order_id = po.id
+
+            # Link the created purchase order back to the requisition
+            # rec.purchase_order_ids = [(4, po.id)]
 
     def _create_sale_order(self):
         """Create a sale order for the requisition and link it to the record."""
 
         SaleOrder = self.env['sale.order']
         for rec in self:
-            # Create a customer based on the destination location
-            customer = self.env['res.partner'].create({
-                'name': rec.destination_location_company_id.name,
-                'customer_rank': 1,
-            })
+            company = rec.company_id
+            env_company = self.with_context(
+                force_company=rec.destination_location_company_id.id,
+                allowed_company_ids=self.env.user.company_ids.ids  # ✅ allow all companies
+            ).env
 
-            # Prepare sale order values
-            so_vals = {
+            # Find or create customer visible to all companies
+            customer = env_company['res.partner'].search([
+                ('name', '=', rec.destination_location_company_id.name)
+            ], limit=1)
+            if not customer:
+                customer = env_company['res.partner'].sudo().create({
+                    'name': rec.destination_location_company_id.name or "Customer",
+                    'customer_rank': 1,
+                    'company_id': company.id,
+                })
+
+            sale_order = env_company['sale.order'].sudo().create({
                 'partner_id': customer.id,
+                'company_id': rec.destination_location_company_id.id,
                 'origin': rec.name,
                 'requisition_id': rec.id,
-                'order_line': [],
-            }
+            })
+            order_lines = []
 
             # Add lines from the material requisition
             for line in rec.material_requisition_line_ids:
-                so_vals['order_line'].append((0, 0, {
+                order_lines.append((0, 0, {
                     'product_id': line.product_id.id,
                     'name': line.product_id.display_name,
                     'product_uom_qty': line.product_uom_qty,
                     'product_uom': line.product_uom.id,
                     'price_unit': line.product_id.lst_price,
                 }))
-
-            # Create the sale order and link it to the requisition
-            so = SaleOrder.create(so_vals)
-            rec.sale_order_ids = [(4, so.id)]
+            if order_lines:
+                env_company['sale.order'].sudo().browse(sale_order.id).write({
+                    'order_line': order_lines
+                })
+            # rec.sale_order_ids = [(4, sale_order.id)]
+            rec.sale_order_id = sale_order.id
 
     def _create_internal_transfer(self):
         """Create an internal stock transfer for the requisition's products."""
@@ -264,31 +323,31 @@ class MaterialRequisition(models.Model):
     # ---------------------------------------------
     # Smart Button Actions
     # ---------------------------------------------
-    def action_view_purchase_orders(self):
-        """Open a window showing purchase orders linked to this requisition."""
-        # Ensure method is called on a single record
-        self.ensure_one()
-        return {
-            'name': _('Purchase Orders'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'purchase.order',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', self.purchase_order_ids.ids)],  # Filter for linked POs
-            'context': dict(self._context),
-        }
+    # def action_view_purchase_orders(self):
+    #     """Open a window showing purchase orders linked to this requisition."""
+    #     # Ensure method is called on a single record
+    #     self.ensure_one()
+    #     return {
+    #         'name': _('Purchase Orders'),
+    #         'type': 'ir.actions.act_window',
+    #         'res_model': 'purchase.order',
+    #         'view_mode': 'list,form',
+    #         'domain': [('id', 'in', self.purchase_order_ids.ids)],  # Filter for linked POs
+    #         'context': dict(self._context),
+    #     }
 
-    def action_view_sale_orders(self):
-        """Open a window showing sale orders linked to this requisition."""
-        # Ensure method is called on a single record
-        self.ensure_one()
-        return {
-            'name': _('Sale Orders'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'sale.order',
-            'view_mode': 'list,form',
-            'domain': [('id', 'in', self.sale_order_ids.ids)],  # Filter for linked SOs
-            'context': dict(self._context),
-        }
+    # def action_view_sale_orders(self):
+    #     """Open a window showing sale orders linked to this requisition."""
+    #     # Ensure method is called on a single record
+    #     self.ensure_one()
+    #     return {
+    #         'name': _('Sale Orders'),
+    #         'type': 'ir.actions.act_window',
+    #         'res_model': 'sale.order',
+    #         'view_mode': 'list,form',
+    #         'domain': [('id', 'in', self.sale_order_ids.ids)],  # Filter for linked SOs
+    #         'context': dict(self._context),
+    #     }
 
     def action_view_transfers(self):
         """Open a window showing the internal transfer linked to this requisition."""
