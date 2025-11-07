@@ -12,7 +12,7 @@ class SaleOrder(models.Model):
     _inherit = "sale.order"
 
     template_file = fields.Binary("Template File")
-    template_filename = fields.Char("Template Filename", default="sale_order_template.xlsx")
+    template_filename = fields.Char("Template Filename")
 
     def action_confirm(self):
         res = super().action_confirm()

@@ -18,6 +18,7 @@
         'security/ir.model.access.csv',
         'data/ir_sequence_data.xml',
         'views/material_requisition_views.xml',
+        'views/stock_location.xml',
         'reports/material_requisition_report.xml',
         'wizards/purchase_requisition_report_wizard_views.xml',
     ],
