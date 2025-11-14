@@ -134,14 +134,14 @@ class MaterialRequisition(models.Model):
 
     def action_receive(self):
         """Receives: confirm POs, validate receipts & mark as Received """
-        for rec in self:
+        for rec in self.sudo():
             # Ensure all related Sale Orders are confirmed
-            if any(so.state != 'sale' for so in rec.sale_order_id):
+            if any(so.sudo().state != 'sale' for so in rec.sale_order_id):
                 raise ValidationError(_("You cannot receive until all related Sale Orders are confirmed."))
 
             # Ensure all Delivery Orders for these Sale Orders are validated (done)
             for so in rec.sale_order_id:
-                delivery_orders = self.env['stock.picking'].search([
+                delivery_orders = self.env['stock.picking'].sudo().with_context(company_id=False).search([
                     ('origin', '=', so.name),
                     ('picking_type_code', '=', 'outgoing')
                 ])
@@ -151,17 +151,17 @@ class MaterialRequisition(models.Model):
                 for picking in delivery_orders:
                     if picking.state != 'done':
                         raise ValidationError(
-                            _("Delivery Order %s for Sale Order %s is not done yet." % (picking.name, so.name)))
+                            _("Delivery Order %s for Sale Order %s is not done yet." % (picking.name, so.sudo().name)))
 
             # Confirm all related Purchase Orders if still draft
             for po in rec.purchase_order_id:
-                if po.state in ('draft', 'sent'):
-                    po.button_confirm()
+                if po.sudo().state in ('draft', 'sent'):
+                    po.sudo().button_confirm()
 
                 # Validate all related receipts
-                for picking in po.picking_ids:
-                    if picking.state not in ('done', 'cancel'):
-                        picking.button_validate()
+                for picking in po.sudo().picking_ids:
+                    if picking.sudo().state not in ('done', 'cancel'):
+                        picking.sudo().button_validate()
             # Finally, mark MR as received
             rec.state = 'received'
 
@@ -176,10 +176,11 @@ class MaterialRequisition(models.Model):
         """Create a purchase order for the requisition and link it to the record."""
         for rec in self:
             company = rec.company_id
+            company_ids = self.env['res.company'].search([])
             # Set up environment for the correct company
             env_company = self.with_context(
-                force_company=rec.source_location_company_id.id,
-                allowed_company_ids=self.env.user.company_ids.ids  # ✅ allow all companies
+                force_company=rec.destination_location_company_id.id,
+                allowed_company_ids=company_ids.ids  # ✅ allow all companies
             ).env
 
             PurchaseOrder = env_company['purchase.order']
@@ -187,20 +188,24 @@ class MaterialRequisition(models.Model):
 
             # Find or create vendor in the correct company
             vendor = Partner.sudo().search([
-                ('name', '=', rec.source_location_company_id.name)
+                ('name', '=', rec.source_location_company_id.sudo().name)
             ], limit=1)
             if not vendor:
                 vendor = Partner.sudo().create({
-                    'name': rec.source_location_company_id.name or "Vendor",
+                    'name': rec.source_location_company_id.sudo().name or "Vendor",
                     'supplier_rank': 1,
                     'company_id': company.id,
                 })
+            # target_location = env_company['stock.location'].sudo().with_context(company_id=False, force_company=False,allowed_company_ids=self.env['res.company'].search([]).ids).search([('name','=','Nashik')],limit=1)
+            # vendor.sudo().write({
+            #     'property_stock_supplier': target_location.id,
+            # })
 
             # Prepare purchase order values
             po_vals = {
                 'partner_id': vendor.id,
                 'origin': rec.name,
-                'company_id': rec.source_location_company_id.id,
+                'company_id': rec.destination_location_company_id.sudo().id,
                 'requisition_id': rec.id,
                 'order_line': [],
             }
@@ -228,25 +233,27 @@ class MaterialRequisition(models.Model):
         SaleOrder = self.env['sale.order']
         for rec in self:
             company = rec.company_id
+            company_ids = self.env['res.company'].search([])
             env_company = self.with_context(
-                force_company=rec.destination_location_company_id.id,
-                allowed_company_ids=self.env.user.company_ids.ids  # ✅ allow all companies
+                force_company=False,
+                allowed_company_ids=company_ids.ids  # ✅ allow all companies
             ).env
 
             # Find or create customer visible to all companies
             customer = env_company['res.partner'].search([
-                ('name', '=', rec.destination_location_company_id.name)
+                ('name', '=', rec.destination_location_company_id.sudo().name)
             ], limit=1)
             if not customer:
                 customer = env_company['res.partner'].sudo().create({
-                    'name': rec.destination_location_company_id.name or "Customer",
+                    'name': rec.destination_location_company_id.sudo().name or "Customer",
                     'customer_rank': 1,
                     'company_id': company.id,
                 })
-
+            # target_location = env_company['stock.location'].sudo().with_context(company_id=False, force_company=False,allowed_company_ids=self.env['res.company'].search([]).ids).search([('name','=','Manesar')],limit=1)
+            # customer.sudo().write({'property_stock_customer': target_location.id})
             sale_order = env_company['sale.order'].sudo().create({
                 'partner_id': customer.id,
-                'company_id': rec.destination_location_company_id.id,
+                'company_id': rec.source_location_company_id.id,
                 'origin': rec.name,
                 'requisition_id': rec.id,
             })
@@ -268,57 +275,57 @@ class MaterialRequisition(models.Model):
             # rec.sale_order_ids = [(4, sale_order.id)]
             rec.sale_order_id = sale_order.id
 
-    def _create_internal_transfer(self):
-        """Create an internal stock transfer for the requisition's products."""
-        # Ensure this method is called on a single record
-        self.ensure_one()
-
-        # Get the main stock location
-        source_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
-        if not source_location:
-            raise UserError(
-                _("Main Stock location 'WH/Stock' not found. Please ensure it exists in your inventory locations or configure the correct source location."))
-
-        # Ensure the requisition has product lines
-        if not self.material_requisition_line_ids:
-            raise UserError(_("Cannot create transfer for a requisition with no products."))
-
-        # Prepare the picking (stock transfer) values
-        picking_vals = {
-            'picking_type_id': self.env.ref('stock.picking_type_internal').id,
-            'location_id': source_location.id,
-            'location_dest_id': self.destination_location_id.id,
-            'origin': self.name,
-            'partner_id': self.request_raised_by.user_id.partner_id.id if self.request_raised_by and self.request_raised_by.user_id else False,
-            'note': _("Internal Transfer for Material Requisition: %s - Purpose: %s") % (self.name, self.purpose),
-            'company_id': self.company_id.id,
-        }
-
-        # Create the picking
-        picking = self.env['stock.picking'].create(picking_vals)
-
-        # Prepare move lines for all products in the requisition
-        move_lines_vals = []
-        for line in self.material_requisition_line_ids:
-            move_lines_vals.append((0, 0, {
-                'name': line.product_id.display_name,
-                'product_id': line.product_id.id,
-                'product_uom_qty': line.product_uom_qty,
-                'product_uom': line.product_uom.id,
-                'location_id': source_location.id,
-                'location_dest_id': self.destination_location_id.id,
-                'picking_id': picking.id,
-                'company_id': self.company_id.id,
-            }))
-
-        # Write the move lines to the picking and confirm the transfer
-        picking.write({'move_ids_without_package': move_lines_vals})
-        picking.action_confirm()
-
-        # Link the created picking to the requisition
-        self.write({
-            'picking_id': picking.id,
-        })
+    # def _create_internal_transfer(self):
+    #     """Create an internal stock transfer for the requisition's products."""
+    #     # Ensure this method is called on a single record
+    #     self.ensure_one()
+    #
+    #     # Get the main stock location
+    #     source_location = self.env.ref('stock.stock_location_stock', raise_if_not_found=False)
+    #     if not source_location:
+    #         raise UserError(
+    #             _("Main Stock location 'WH/Stock' not found. Please ensure it exists in your inventory locations or configure the correct source location."))
+    #
+    #     # Ensure the requisition has product lines
+    #     if not self.material_requisition_line_ids:
+    #         raise UserError(_("Cannot create transfer for a requisition with no products."))
+    #
+    #     # Prepare the picking (stock transfer) values
+    #     picking_vals = {
+    #         'picking_type_id': self.env.ref('stock.picking_type_internal').id,
+    #         'location_id': source_location.id,
+    #         'location_dest_id': self.destination_location_id.id,
+    #         'origin': self.name,
+    #         'partner_id': self.request_raised_by.user_id.partner_id.id if self.request_raised_by and self.request_raised_by.user_id else False,
+    #         'note': _("Internal Transfer for Material Requisition: %s - Purpose: %s") % (self.name, self.purpose),
+    #         'company_id': self.company_id.id,
+    #     }
+    #
+    #     # Create the picking
+    #     picking = self.env['stock.picking'].create(picking_vals)
+    #
+    #     # Prepare move lines for all products in the requisition
+    #     move_lines_vals = []
+    #     for line in self.material_requisition_line_ids:
+    #         move_lines_vals.append((0, 0, {
+    #             'name': line.product_id.display_name,
+    #             'product_id': line.product_id.id,
+    #             'product_uom_qty': line.product_uom_qty,
+    #             'product_uom': line.product_uom.id,
+    #             'location_id': source_location.id,
+    #             'location_dest_id': self.destination_location_id.id,
+    #             'picking_id': picking.id,
+    #             'company_id': self.company_id.id,
+    #         }))
+    #
+    #     # Write the move lines to the picking and confirm the transfer
+    #     picking.write({'move_ids_without_package': move_lines_vals})
+    #     picking.action_confirm()
+    #
+    #     # Link the created picking to the requisition
+    #     self.write({
+    #         'picking_id': picking.id,
+    #     })
 
     # ---------------------------------------------
     # Smart Button Actions

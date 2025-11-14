@@ -49,7 +49,7 @@ class SaleOrder(models.Model):
                     ('location_id', '=', stock_location.id)
                 ])
 
-                total_qty_available = sum(quants.mapped('quantity'))
+                total_qty_available = sum(quants.mapped('inventory_quantity_auto_apply'))
                 if total_qty_available < total_qty:
                     raise ValidationError(
                         f"Not enough stock for package product '{package_product.display_name}'"
