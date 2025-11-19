@@ -19,6 +19,7 @@
         'views/marketplace_master_views.xml',
         'views/purchase_order.xml',
         'views/account_payment_view.xml',
+        'views/account_move_view.xml',
         'wizard/marketplace_order_import_wizard_views.xml',
         'wizard/marketplace_template_download_wizard.xml',
         'wizard/create_reorder_point_wizard_view.xml',

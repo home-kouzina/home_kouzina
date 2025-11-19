@@ -3,6 +3,7 @@ import io
 import base64
 from datetime import datetime
 import xlsxwriter
+import re
 
 
 class HKInventoryReport(models.TransientModel):
@@ -11,6 +12,29 @@ class HKInventoryReport(models.TransientModel):
 
     file_data = fields.Binary('File')
     file_name = fields.Char('File Name')
+
+    def _split_product_details(self,display_name):
+        """
+        Example: '[HK_MSM_01] Maharashtrian Sabzi (Bhaaji) Masala (100g)'
+        Returns: ('HK_MSM_01', 'Maharashtrian Sabzi (Bhaaji) Masala', '100g')
+        """
+        sku = ''
+        variant = ''
+        name = display_name
+
+        # Extract SKU -> text inside []
+        sku_match = re.search(r'\[(.*?)\]', display_name)
+        if sku_match:
+            sku = sku_match.group(1)
+            name = display_name.replace(sku_match.group(0), '').strip()
+
+        # Extract Variant -> text inside () at end
+        variant_match = re.search(r'\((.*?)\)$', name)
+        if variant_match:
+            variant = variant_match.group(1)
+            name = name.replace(variant_match.group(0), '').strip()
+
+        return sku, name, variant
 
     # -----------------------------------------
     # Excel Report
@@ -63,8 +87,10 @@ class HKInventoryReport(models.TransientModel):
         warehouses = self.env['stock.warehouse'].search([])
         products = self.env['product.product'].search([])
 
-        # Header
-        header = ['Product', 'Regional Language Name']
+        # ----------------------
+        # HEADER
+        # ----------------------
+        header = ['Product Name', 'SKU', 'Variant', 'Regional Language Name']
         for wh in warehouses:
             header.append(wh.name)
         header.append('Total Quantity')
@@ -73,7 +99,9 @@ class HKInventoryReport(models.TransientModel):
         for col, name in enumerate(header):
             worksheet.write(0, col, name, header_format)
 
-        # Data rows
+        # ----------------------
+        # DATA ROWS
+        # ----------------------
         row_num = 1
         for product in products:
             # Alternate row background
@@ -83,9 +111,17 @@ class HKInventoryReport(models.TransientModel):
             total_qty = 0
             col_num = 0
 
-            # Product name & regional name
-            worksheet.write(row_num, col_num, product.display_name or '', text_fmt)
+            # ---- SPLIT PRODUCT DETAILS ----
+            sku, base_name, variant = self._split_product_details(product.display_name or '')
+
+            worksheet.write(row_num, col_num, base_name, text_fmt)  # Product Name
             col_num += 1
+            worksheet.write(row_num, col_num, sku, text_fmt)  # SKU
+            col_num += 1
+            worksheet.write(row_num, col_num, variant, text_fmt)  # Variant
+            col_num += 1
+
+            # Regional Name
             worksheet.write(row_num, col_num, product.regional_language_name or '', text_fmt)
             col_num += 1
 
@@ -104,10 +140,14 @@ class HKInventoryReport(models.TransientModel):
             worksheet.write(row_num, col_num, total_qty, qty_fmt)
             row_num += 1
 
-        # Adjust column widths
-        worksheet.set_column(0, 0, 40)  # Product column
-        worksheet.set_column(1, 1, 25)  # Regional Language Name column
-        worksheet.set_column(2, len(header) - 1, 20)  # Remaining columns
+        # ----------------------
+        # COLUMN WIDTHS
+        # ----------------------
+        worksheet.set_column(0, 0, 40)  # Product Name
+        worksheet.set_column(1, 1, 20)  # SKU
+        worksheet.set_column(2, 2, 15)  # Variant (100g / 1kg)
+        worksheet.set_column(3, 3, 30)  # Regional Language Name
+        worksheet.set_column(4, len(header) - 1, 20)  # Warehouses+Total
 
         # Freeze header row
         worksheet.freeze_panes(1, 0)
@@ -145,8 +185,10 @@ class HKInventoryPDF(models.AbstractModel):
         report_data = []
 
         for product in products:
+            sku, name, variant = self.env['hk.inventory.report.wizard']._split_product_details(product.display_name or '')
             wh_qty = []
             total_qty = 0
+
             for wh in warehouses:
                 qty = self.env['stock.quant'].search([
                     ('product_id', '=', product.id),
@@ -155,14 +197,17 @@ class HKInventoryPDF(models.AbstractModel):
                 qty_sum = sum(qty)
                 wh_qty.append({'warehouse': wh.name, 'qty': qty_sum})
                 total_qty += qty_sum
+
             report_data.append({
-                'product': product.name,
+                'product_name': name,
+                'sku': sku,
+                'variant': variant,
                 'regional_language_name': product.regional_language_name or '',
                 'quantities': wh_qty,
                 'total': total_qty,
             })
 
-        sorted_data = sorted(report_data, key=lambda d: d['product'], reverse=True)
+        sorted_data = sorted(report_data, key=lambda d: d['product_name'], reverse=True)
 
         return {
             'docs': sorted_data,

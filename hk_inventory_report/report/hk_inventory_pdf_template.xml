@@ -20,7 +20,9 @@
                        style="width:100%; border-collapse:collapse; margin-top:10px; font-size:13px; border:1px solid #D5D8DC;">
                     <thead style="background-color:#85C1E9; color:#154360; font-weight:bold;">
                         <tr>
-                            <th style="padding:8px; border:1px solid #AED6F1;">Product</th>
+                            <th style="padding:8px; border:1px solid #AED6F1;">Product Name</th>
+                            <th style="padding:8px; border:1px solid #AED6F1;">SKU</th>
+                            <th style="padding:8px; border:1px solid #AED6F1;">Variant</th>
                             <th style="padding:8px; border:1px solid #AED6F1;">Regional Name</th>
                             <t t-foreach="warehouses" t-as="wh">
                                 <th style="padding:8px; text-align:center; border:1px solid #AED6F1;">
@@ -33,12 +35,18 @@
 
                     <tbody>
                         <!-- Sort docs in descending order by product name -->
-                        <t t-set="sorted_docs" t-value="sorted(docs, key=lambda d: d['product'], reverse=True)"/>
+                        <t t-set="sorted_docs" t-value="sorted(docs, key=lambda d: d['product_name'], reverse=True)"/>
                         <t t-foreach="sorted_docs" t-as="doc" t-foreach-index="doc_index">
                             <t t-set="bg_color" t-value="'#EBF5FB' if (doc_index % 2 == 0) else '#FFFFFF'"/>
                             <tr t-att-style="'background-color: %s;' % bg_color">
                                 <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
-                                    <t t-esc="doc['product']"/>
+                                    <t t-esc="doc['product_name']"/>
+                                </td>
+                                <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
+                                    <t t-esc="doc['sku']"/>
+                                </td>
+                                <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
+                                    <t t-esc="doc['variant']"/>
                                 </td>
                                 <td style="padding:8px; border:1px solid #D6EAF8; color:#2E4053;">
                                     <t t-esc="doc.get('regional_language_name', '')"/>
