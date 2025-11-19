@@ -37,7 +37,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'marketplace_order_id', 'customer_email', 'customer_name',
         'billing_street', 'billing_city', 'billing_zip',
         'order_date', 'product_sku', 'quantity', 'unit_price',
-        'order_line_note'
+        'order_line_note','marketplace_invoice_number',
+        'marketplace_invoice_type','marketplace_sale_state'
     ]
 
     # Map user-friendly Excel headers to internal field names
@@ -83,6 +84,10 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Shopify Payment Status': 'shopify_payment_status',
         'Shopify Order Status': 'shopify_order_status',
         'Shopify Total Amount': 'shopify_total_amount',
+        #...............INVOICE,,,,,,,,,,
+        'Invoice Number': 'marketplace_invoice_number',
+        'Invoice Type': 'marketplace_invoice_type',
+        'State of Sale': 'marketplace_sale_state',
     }
 
     @api.onchange('xlsx_file')
@@ -618,7 +623,10 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 'stock.warehouse0').id),
             # sales team - keep your previous default
             'team_id': self.env.ref('sales_team.salesteam_website_sales').id,
-            'marketplace_type': marketplace_type
+            'marketplace_type': marketplace_type,
+            # 'marketplace_invoice_number': first_row.get('marketplace_invoice_number'),
+            # 'marketplace_invoice_type': first_row.get('marketplace_invoice_type'),
+            # 'marketplace_invoice_state': first_row.get('marketplace_sale_state'),
         }
 
         # Tag logic: marketplace specific tag, fallback to marketplace name tag, CSV override 'order_tag' if present
@@ -653,6 +661,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             # Shopify
             'shopify_order_id', 'shopify_order_date', 'shopify_payment_status', 'shopify_order_status',
             'shopify_total_amount',
+            #invoice
+            'marketplace_invoice_number','marketplace_invoice_type','marketplace_sale_state'
         ]
         for fld in marketplace_fields:
             if first_row.get(fld):

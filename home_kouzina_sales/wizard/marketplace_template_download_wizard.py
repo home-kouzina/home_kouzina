@@ -15,10 +15,10 @@ class MarketplaceTemplateDownloadWizard(models.TransientModel):
 
         # Map marketplace name → static XLSX file path
         template_map = {
-            'flipkart': '/home_kouzina_sales/static/src/files/flipkart_orders.xlsx',
-            'amazon':  '/home_kouzina_sales/static/src/files/amazon_orders.xlsx',
-            'blinkit': '/home_kouzina_sales/static/src/files/blinkit_orders.xlsx',
-            'shopify': '/home_kouzina_sales/static/src/files/shopify_orders.xlsx',
+            'flipkart': '/home_kouzina_sales/static/src/files/flipkart_order.xlsx',
+            'amazon':  '/home_kouzina_sales/static/src/files/amazon_order.xlsx',
+            'blinkit': '/home_kouzina_sales/static/src/files/blinkit_order.xlsx',
+            'shopify': '/home_kouzina_sales/static/src/files/shopify_order.xlsx',
         }
 
         file_url = template_map.get(marketplace_name)
