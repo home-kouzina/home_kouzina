@@ -56,3 +56,6 @@ class SaleOrder(models.Model):
         ('fulfilled', 'Fulfilled'), ('unfulfilled', 'Unfulfilled'), ('partial', 'Partially Fulfilled')
     ], string="Shopify Order Status")
     shopify_total_amount = fields.Float(string="Shopify Total Amount")
+    marketplace_invoice_number = fields.Char(string="Marketplace Invoice Number")
+    marketplace_invoice_type = fields.Char(string="Invoice Type")
+    marketplace_sale_state = fields.Char(string="Sale State")

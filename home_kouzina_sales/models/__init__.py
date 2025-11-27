@@ -6,3 +6,4 @@ from . import stock_move
 from . import marketplace_master
 from . import purchase_order
 from . import account_payment
+from . import account_move

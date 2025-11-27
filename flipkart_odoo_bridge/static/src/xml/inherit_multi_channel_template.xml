@@ -1,0 +1,11 @@
+<!-- <?xml version="1.0" encoding="utf-8" ?> -->
+<!-- Copyright (c) 2015-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>;) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<!--"License URL :<https://store.webkul.com/license.html/>;" -->
+<templates xml:space="preserve">
+    <t t-extend="instance_dashboard_template">
+        <t t-jquery="#dashboard_image_container" t-operation="append">
+            <img src="/flipkart_odoo_bridge/static/src/img/dashboard.png" alt="Not Found!" class="img-fluid" t-if="widget.data.channel === 'flipkart'" />
+        </t>
+    </t>
+</templates>

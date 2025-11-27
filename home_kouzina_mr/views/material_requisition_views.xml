@@ -28,30 +28,30 @@
                 <sheet>
                     <!-- Statistical buttons for related orders and transfers -->
                     <div name="button_box" class="oe_button_box">
-                        <button name="action_view_purchase_orders"
-                                class="oe_stat_button"
-                                icon="fa-shopping-cart"
-                                type="object"
-                                invisible="purchase_order_count == 0">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value">
-                                    <field name="purchase_order_count"/>
-                                </span>
-                                <span class="o_stat_text">Purchase Orders</span>
-                            </div>
-                        </button>
-                        <button name="action_view_sale_orders"
-                                class="oe_stat_button"
-                                icon="fa-file-text-o"
-                                type="object"
-                                invisible="sale_order_count == 0">
-                            <div class="o_field_widget o_stat_info">
-                                <span class="o_stat_value">
-                                    <field name="sale_order_count"/>
-                                </span>
-                                <span class="o_stat_text">Sale Orders</span>
-                            </div>
-                        </button>
+<!--                        <button name="action_view_purchase_orders"-->
+<!--                                class="oe_stat_button"-->
+<!--                                icon="fa-shopping-cart"-->
+<!--                                type="object"-->
+<!--                                invisible="purchase_order_count == 0">-->
+<!--                            <div class="o_field_widget o_stat_info">-->
+<!--                                <span class="o_stat_value">-->
+<!--                                    <field name="purchase_order_count"/>-->
+<!--                                </span>-->
+<!--                                <span class="o_stat_text">Purchase Orders</span>-->
+<!--                            </div>-->
+<!--                        </button>-->
+<!--                        <button name="action_view_sale_orders"-->
+<!--                                class="oe_stat_button"-->
+<!--                                icon="fa-file-text-o"-->
+<!--                                type="object"-->
+<!--                                invisible="sale_order_count == 0">-->
+<!--                            <div class="o_field_widget o_stat_info">-->
+<!--                                <span class="o_stat_value">-->
+<!--                                    <field name="sale_order_count"/>-->
+<!--                                </span>-->
+<!--                                <span class="o_stat_text">Sale Orders</span>-->
+<!--                            </div>-->
+<!--                        </button>-->
                         <button name="action_view_transfers"
                                 class="oe_stat_button"
                                 icon="fa-truck"
@@ -115,6 +115,8 @@
                             <field name="requested_for_job_position_id" readonly="1"/>
                             <field name="requested_for_reporting_manager_id" readonly="1"/>
                             <field name="required_date" readonly="state not in ['draft']"/>
+                            <field name="purchase_order_id" readonly="1" options="{'no_create': True, 'no_edit': True}"/>
+                            <field name="sale_order_id" readonly="1" options="{'no_create': True, 'no_edit': True}"/>
                         </group>
                     </group>
                     <!-- Requested products notebook page -->

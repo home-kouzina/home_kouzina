@@ -44,8 +44,27 @@
                             <field name="shopify_order_status"/>
                             <field name="shopify_total_amount"/>
                         </group>
+                        <group name="Invoice Details" invisible="marketplace_type == False">
+                            <field name="marketplace_invoice_number"/>
+                            <field name="marketplace_invoice_type"/>
+                            <field name="marketplace_sale_state"/>
+                        </group>
                     </group>
                 </page>
+            </xpath>
+        </field>
+    </record>
+    <record id="view_order_list_inherit_marketplace" model="ir.ui.view">
+        <field name="name">sale.order.list.marketplace.inherit</field>
+        <field name="model">sale.order</field>
+        <!-- Inherit the tree/list view -->
+        <field name="inherit_id" ref="sale.view_quotation_tree_with_onboarding"/>
+        <field name="arch" type="xml">
+            <!-- Add marketplace fields after the customer field -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="marketplace_invoice_number"/>
+                <field name="marketplace_invoice_type"/>
+                <field name="marketplace_sale_state"/>
             </xpath>
         </field>
     </record>

@@ -1,0 +1,19 @@
+<odoo>
+<!-- Copyright (c) 2019-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+	<data noupdate="1">
+		<record forcecreate='True' id="flipkart_channel" model="multi.channel.sale">
+			<field name="name">Flipkart</field>
+			<field name="channel">flipkart</field>
+			<field name="environment">sandbox</field>
+			<field name="debug">disable</field>
+			<field name="flipkart_app_id">1459b0ba6a599703806ba92186663233407a6</field>
+			<field name="flipkart_secret_id">766af5d48b4ed34499462b483979d5fd</field>
+			<field name="order_state_ids" eval="[(0, 0, {'default_order_state': True, 'odoo_order_state':'draft'}),(0, 0,{'default_order_state': False, 'odoo_order_state': 'sale', 'odoo_create_invoice': True,'odoo_set_invoice_state': 'open','channel_state':'APPROVED'})]"/>
+			<field name="discount_product_id" ref="odoo_multi_channel_sale.discount_product"/>
+			<field name="color">#F9FF33</field>
+            <field name="image" type="base64" file="odoo_multi_channel_sale/static/description/instance_images/Slider-img-Odoo-Multichannel-Flipkart-Connector-thumbnail.png"/>
+		</record>
+	</data>
+</odoo>
+

@@ -18,6 +18,7 @@
                   <button name="action_create_reorder_point"
                     type="object"
                     string="Create Reorder Point"
+                    invisible="type not in ['consu']"
                     class="btn-primary"/>
             </xpath>
         </field>
