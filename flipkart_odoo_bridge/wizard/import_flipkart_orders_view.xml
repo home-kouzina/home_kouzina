@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2019-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<odoo>
+    <data>
+        <record id="import_flipkart_orders_form" model="ir.ui.view">
+            <field name="name">import_flipkart_orders_form.form</field>
+            <field name="model">import.flipkart.orders</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Import Flipkart Orders">
+                    <sheet>
+                        <group col="4">
+                             <field name="modified_from_date"/>
+                             <field name="modified_to_date" required="modified_from_date != False"/>
+                             <field name="flipkart_order_state" invisible="modified_from_date == False"/>
+                             <field name="flipkart_sku" invisible="modified_from_date == False"/>
+                             <field name="channel_id" invisible="1"/>
+                       </group>
+                    </sheet>
+                    <separator colspan="6"/>
+                    <footer>
+                        <button name="import_now" string="Import Now" type="object" class="oe_highlight" />
+                        <span>or</span>
+                        <button special="cancel" string="Cancel" />
+                    </footer>
+                </form>
+            </field>
+        </record>
+        <record id="action_id_import_flipkart_orders" model="ir.actions.act_window">
+            <field name="name">Import Flipkart Orders</field>
+            <field name="res_model">import.flipkart.orders</field>
+            <field name="view_mode">form</field>
+            <field name="target">new</field>
+        </record>
+    </data>
+</odoo>
