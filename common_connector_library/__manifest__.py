@@ -30,6 +30,7 @@
              'views/res_partner_view.xml',
              'wizard/stock_return_picking.xml',
              ],
+    'application': True,
     'installable': True,
     'price': 20.00,
     'currency': 'EUR',
