@@ -24,7 +24,8 @@
             <list>
                 <field name="name"/>
                 <field name="date"/>
-                <field name="warehouse_id"/>
+                <!-- <field name="warehouse_id"/> -->
+                <field name="warehouse_ids" widget="many2many_tags"/>
                 <field name="state"
                        decoration-info="state=='draft'"
                        decoration-success="state=='reported'"
@@ -72,7 +73,7 @@
                             <field name="date" readonly="state not in ['draft']"/>
                         </group>
                         <group>
-                            <field name="warehouse_id"
+                            <field name="warehouse_ids" widget="many2many_tags"
                                    readonly="state not in ['draft']"
                                    options="{'no_create': True, 'no_edit': True, 'no_open': True}"
                             />
@@ -85,6 +86,8 @@
                             <field name="line_ids" readonly="state not in ['draft']">
                                 <list editable="bottom">
                                     <field name="product_id"/>
+                                    <field name="product_type"/>
+                                    <field name="sale_price"/>
                                     <field name="location_id"/>
                                     <field name="uom_id"/>
                                     <field name="physical_qty"/>
