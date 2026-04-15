@@ -21,6 +21,8 @@
                     <thead style="background-color:#85C1E9; color:#154360; font-weight:bold;">
                         <tr>
                             <th style="padding:8px; border:1px solid #AED6F1;">Product Name</th>
+                            <!-- Added Product Type column header in PDF template -->
+                            <th style="padding:8px; border:1px solid #AED6F1;">Product Type</th>
                             <th style="padding:8px; border:1px solid #AED6F1;">SKU</th>
                             <th style="padding:8px; border:1px solid #AED6F1;">Variant</th>
                             <th style="padding:8px; border:1px solid #AED6F1;">Regional Name</th>
@@ -41,6 +43,10 @@
                             <tr t-att-style="'background-color: %s;' % bg_color">
                                 <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
                                     <t t-esc="doc['product_name']"/>
+                                </td>
+                                <!-- Added Product Type column in PDF template -->
+                                 <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
+                                    <t t-esc="doc['product_type']"/>
                                 </td>
                                 <td style="padding:8px; border:1px solid #D6EAF8; color:#1B2631; font-weight:bold;">
                                     <t t-esc="doc['sku']"/>
