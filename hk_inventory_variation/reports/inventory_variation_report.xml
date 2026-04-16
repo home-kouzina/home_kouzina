@@ -85,7 +85,7 @@
                                 <td><t t-esc="line.product_id.name"/></td>
                                 <td><t t-esc="line.product_type"/></td>
                                 <td><t t-esc="line.sale_price"/></td>
-                                <td><t t-esc="line.location_id.name"/></td>
+                                <td><t t-esc="line.location_id.complete_name"/></td>
                                 <td><t t-esc="line.theoretical_qty"/></td>
                                 <td><t t-esc="line.physical_qty"/></td>
                                 <td><t t-esc="line.variation_qty"/></td>
