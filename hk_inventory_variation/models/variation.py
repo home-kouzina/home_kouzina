@@ -276,7 +276,7 @@ class InventoryVariation(models.Model):
             sheet.write(row_idx, shift_col + 1, line.product_id.name or '', row_format)
             sheet.write(row_idx, shift_col + 2, product_type, row_format)
             sheet.write(row_idx, shift_col + 3, line.product_id.lst_price or 0.0, row_format)
-            sheet.write(row_idx, shift_col + 4, line.location_id.name or '', row_format)
+            sheet.write(row_idx, shift_col + 4, line.location_id.complete_name or '', row_format)
             sheet.write(row_idx, shift_col + 5, line.theoretical_qty, row_format)
             sheet.write(row_idx, shift_col + 6, line.physical_qty, row_format)
             sheet.write(row_idx, shift_col + 7, line.variation_qty, row_format)
