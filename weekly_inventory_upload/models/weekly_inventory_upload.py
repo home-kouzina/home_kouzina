@@ -1,10 +1,9 @@
 import base64
 import io
+import re
 from collections import defaultdict
 
 from openpyxl import Workbook, load_workbook
-from openpyxl.workbook.defined_name import DefinedName
-from openpyxl.worksheet.datavalidation import DataValidation
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -56,12 +55,83 @@ class WeeklyInventoryUpload(models.Model):
                 vals['name'] = seq.next_by_code('weekly.inventory.upload') or _('New')
         return super().create(vals_list)
 
+    def _sanitize_download_filename(self, filename, default_name):
+        safe_filename = re.sub(r'[^A-Za-z0-9._-]+', '_', (filename or '').strip()).strip('._')
+        return safe_filename or default_name
+
+    def _get_binary_download_url(self, field_name, filename_field):
+        self.ensure_one()
+        return '/web/content?model=%s&id=%s&field=%s&filename_field=%s&download=true' % (
+            self._name,
+            self.id,
+            field_name,
+            filename_field,
+        )
+
+    def _get_product_reference_value(self, product):
+        return product.default_code or 'ID:%s' % product.id
+
+    def _get_product_display_name(self, product):
+        return product.with_context(display_default_code=False).display_name
+
+    def _normalize_text(self, value):
+        return str(value).strip() if value is not None else ''
+
+    def _find_product_by_reference(self, product_reference):
+        product_reference = (product_reference or '').strip()
+        if not product_reference:
+            return self.env['product.product']
+
+        if product_reference.upper().startswith('ID:'):
+            product_id_text = product_reference.split(':', 1)[1].strip()
+            if product_id_text.isdigit():
+                product = self.env['product.product'].search([
+                    ('id', '=', int(product_id_text)),
+                    ('is_storable', '=', True),
+                ], limit=1)
+                if product:
+                    return product
+            raise ValidationError(_('Product not found for reference: %s') % product_reference)
+
+        product = self.env['product.product'].search([
+            ('default_code', '=', product_reference),
+            ('is_storable', '=', True),
+        ], limit=2)
+        if len(product) > 1:
+            raise ValidationError(_(
+                'Multiple products found for internal reference "%s".'
+            ) % product_reference)
+        if product:
+            return product
+
+        raise ValidationError(_('Product not found for reference: %s') % product_reference)
+
+    def _find_product_from_row(self, product_reference, product_name):
+        if product_reference:
+            return self._find_product_by_reference(product_reference)
+        if product_name:
+            return self._find_product(product_name)
+        raise ValidationError(_('Product reference and product are missing.'))
+
     def _find_product(self, product_name):
+        product_name = (product_name or '').strip()
+
+        if product_name.startswith('[ID:') and '] ' in product_name:
+            product_id_text = product_name[4:].split('] ', 1)[0].strip()
+            if product_id_text.isdigit():
+                product = self.env['product.product'].search([
+                    ('id', '=', int(product_id_text)),
+                    ('is_storable', '=', True),
+                ], limit=1)
+                if product:
+                    return product
+
         if product_name.startswith('[') and '] ' in product_name:
             default_code = product_name[1:].split('] ', 1)[0].strip()
             if default_code:
                 product = self.env['product.product'].search([
                     ('default_code', '=', default_code),
+                    ('is_storable', '=', True),
                 ], limit=2)
                 if len(product) > 1:
                     raise ValidationError(_(
@@ -70,8 +140,25 @@ class WeeklyInventoryUpload(models.Model):
                 if product:
                     return product
 
+        if ' (' in product_name and product_name.endswith(')'):
+            template_name = product_name.rsplit(' (', 1)[0].strip()
+            candidate_products = self.env['product.product'].search([
+                ('name', '=', template_name),
+                ('is_storable', '=', True),
+            ])
+            display_products = candidate_products.with_context(display_default_code=False).filtered(
+                lambda p: p.display_name == product_name
+            )
+            if len(display_products) > 1:
+                raise ValidationError(_(
+                    'Multiple variants found for "%s". Please use the dropdown value from the sample template.'
+                ) % product_name)
+            if display_products:
+                return display_products
+
         product = self.env['product.product'].search([
             ('name', '=', product_name),
+            ('is_storable', '=', True),
         ], limit=2)
         if len(product) > 1:
             raise ValidationError(_(
@@ -82,6 +169,7 @@ class WeeklyInventoryUpload(models.Model):
 
         product = self.env['product.product'].search([
             ('default_code', '=', product_name),
+            ('is_storable', '=', True),
         ], limit=2)
         if len(product) > 1:
             raise ValidationError(_(
@@ -129,95 +217,208 @@ class WeeklyInventoryUpload(models.Model):
 
         raise ValidationError(_('Location not found: %s') % location_name)
 
-    def _get_template_product_values(self):
-        products = self.env['product.product'].search(
+    def _get_template_products(self):
+        return self.env['product.product'].search(
             [('is_storable', '=', True)],
             order='default_code, name, id',
         )
-        values = []
-        for product in products:
-            if product.default_code:
-                values.append('[%s] %s' % (product.default_code, product.name))
-            else:
-                values.append(product.name)
-        return values or ['']
 
-    def _get_template_location_values(self):
-        locations = self.env['stock.location'].search(
+    def _get_template_locations(self):
+        return self.env['stock.location'].search(
             [('usage', 'in', ('internal', 'transit'))],
             order='complete_name, id',
         )
-        return locations.mapped('complete_name') or ['']
 
-    def _add_template_dropdown(self, sheet, column, range_name, title, message):
-        validation = DataValidation(
-            type='list',
-            formula1='=%s' % range_name,
-            allow_blank=True,
-        )
-        validation.promptTitle = title
-        validation.prompt = message
-        validation.errorTitle = _('Invalid Value')
-        validation.error = message
-        sheet.add_data_validation(validation)
-        validation.add('%s2:%s%s' % (column, column, self._template_max_row))
+    def _resolve_location_headers(self, headers):
+        location_by_header = {}
+        for header in headers[2:]:
+            location_name = self._normalize_text(header)
+            if not location_name or location_name in location_by_header:
+                continue
+            location_by_header[location_name] = self._find_location(location_name)
+        return location_by_header
+
+    def _prepare_wide_format_entries(self, rows, headers):
+        location_by_header = self._resolve_location_headers(headers)
+        if not location_by_header:
+            raise ValidationError(_('The template must include at least one location column after Product Reference and Product.'))
+
+        total_rows = 0
+        error_rows = []
+        grouped_rows = defaultdict(list)
+
+        for row_index, row in enumerate(rows[1:], start=2):
+            product_reference = self._normalize_text(row[0] if len(row) > 0 else '')
+            product_name = self._normalize_text(row[1] if len(row) > 1 else '')
+            location_cells = row[2:] if len(row) > 2 else []
+
+            if not product_reference and not product_name and all(cell in (None, '') for cell in location_cells):
+                continue
+
+            for column_index, header in enumerate(headers[2:], start=2):
+                location_name = self._normalize_text(header)
+                if not location_name:
+                    continue
+                cell_value = row[column_index] if column_index < len(row) else None
+                if cell_value in (None, ''):
+                    continue
+                if isinstance(cell_value, str) and not cell_value.strip():
+                    continue
+
+                try:
+                    quantity_value = float(cell_value)
+                except Exception:
+                    total_rows += 1
+                    error_rows.append([
+                        row_index,
+                        product_reference,
+                        product_name,
+                        location_name,
+                        cell_value,
+                        _('Quantity must be numeric.'),
+                    ])
+                    continue
+
+                if quantity_value < 0:
+                    total_rows += 1
+                    error_rows.append([
+                        row_index,
+                        product_reference,
+                        product_name,
+                        location_name,
+                        quantity_value,
+                        _('Quantity cannot be negative.'),
+                    ])
+                    continue
+
+                if quantity_value == 0:
+                    continue
+
+                total_rows += 1
+                grouped_rows[(product_reference, product_name, location_name)].append({
+                    'row_number': row_index,
+                    'product_reference': product_reference,
+                    'product_name': product_name,
+                    'location_name': location_name,
+                    'quantity': quantity_value,
+                    'location': location_by_header[location_name],
+                })
+
+        return total_rows, grouped_rows, error_rows
+
+    def _prepare_long_format_entries(self, rows, headers):
+        valid_headers = [
+            ['Product', 'Location', 'Quantity'],
+            ['Product', 'Warehouse Location', 'Quantity'],
+            ['Product', 'Warehouse', 'Quantity'],
+        ]
+        if headers[:3] not in valid_headers:
+            raise ValidationError(_(
+                'Invalid template. Use either Product Reference, Product, then location columns; '
+                'or Product, Location, Quantity.'
+            ))
+
+        total_rows = 0
+        error_rows = []
+        grouped_rows = defaultdict(list)
+
+        for row_index, row in enumerate(rows[1:], start=2):
+            if not row or all(cell in (None, '') for cell in row[:3]):
+                continue
+
+            product_name = self._normalize_text(row[0] if len(row) > 0 else '')
+            location_name = self._normalize_text(row[1] if len(row) > 1 else '')
+            quantity_value = row[2] if len(row) > 2 else None
+
+            if quantity_value in (None, '') or (isinstance(quantity_value, str) and not quantity_value.strip()):
+                total_rows += 1
+                error_rows.append([
+                    row_index,
+                    '',
+                    product_name,
+                    location_name,
+                    '',
+                    _('Quantity is missing.'),
+                ])
+                continue
+
+            try:
+                quantity_value = float(quantity_value)
+            except Exception:
+                total_rows += 1
+                error_rows.append([
+                    row_index,
+                    '',
+                    product_name,
+                    location_name,
+                    quantity_value,
+                    _('Quantity must be numeric.'),
+                ])
+                continue
+
+            if quantity_value < 0:
+                total_rows += 1
+                error_rows.append([
+                    row_index,
+                    '',
+                    product_name,
+                    location_name,
+                    quantity_value,
+                    _('Quantity cannot be negative.'),
+                ])
+                continue
+
+            if quantity_value == 0:
+                continue
+
+            total_rows += 1
+            grouped_rows[('', product_name, location_name)].append({
+                'row_number': row_index,
+                'product_reference': '',
+                'product_name': product_name,
+                'location_name': location_name,
+                'quantity': quantity_value,
+                'location': False,
+            })
+
+        return total_rows, grouped_rows, error_rows
 
     def action_download_sample_template(self):
         self.ensure_one()
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Inventory Upload'
-        sheet.append(['Product', 'Location', 'Quantity'])
+        locations = self._get_template_locations()
+        products = self._get_template_products()
 
-        product_values = self._get_template_product_values()
-        location_values = self._get_template_location_values()
+        headers = ['Product Reference', 'Product'] + locations.mapped('complete_name')
+        sheet.append(headers)
 
-        data_sheet = workbook.create_sheet('TemplateData')
-        data_sheet.append(['Products', 'Locations'])
-        max_rows = max(len(product_values), len(location_values))
-        for index in range(max_rows):
-            data_sheet.cell(row=index + 2, column=1, value=product_values[index] if index < len(product_values) else '')
-            data_sheet.cell(row=index + 2, column=2, value=location_values[index] if index < len(location_values) else '')
-        data_sheet.sheet_state = 'hidden'
+        for product in products:
+            sheet.append([
+                self._get_product_reference_value(product),
+                self._get_product_display_name(product),
+            ] + [''] * len(locations))
 
-        workbook.defined_names.add(DefinedName(
-            'WeeklyInventoryProducts',
-            attr_text="'TemplateData'!$A$2:$A$%s" % (len(product_values) + 1),
-        ))
-        workbook.defined_names.add(DefinedName(
-            'WeeklyInventoryLocations',
-            attr_text="'TemplateData'!$B$2:$B$%s" % (len(location_values) + 1),
-        ))
-
-        self._add_template_dropdown(
-            sheet,
-            'A',
-            'WeeklyInventoryProducts',
-            _('Product'),
-            _('Select a product from the list.'),
-        )
-        self._add_template_dropdown(
-            sheet,
-            'B',
-            'WeeklyInventoryLocations',
-            _('Location'),
-            _('Select a stock location from the list.'),
-        )
-        sheet.freeze_panes = 'A2'
-        sheet.column_dimensions['A'].width = 35
-        sheet.column_dimensions['B'].width = 45
-        sheet.column_dimensions['C'].width = 14
+        sheet.freeze_panes = 'C2'
+        sheet.column_dimensions['A'].width = 20
+        sheet.column_dimensions['B'].width = 40
+        for column_index in range(3, len(headers) + 1):
+            sheet.column_dimensions[sheet.cell(row=1, column=column_index).column_letter].width = 18
 
         output = io.BytesIO()
         workbook.save(output)
         file_content = base64.b64encode(output.getvalue())
         self.write({
             'error_file': file_content,
-            'error_filename': 'sample_weekly_inventory_template.xlsx',
+            'error_filename': self._sanitize_download_filename(
+                'sample_weekly_inventory_template.xlsx',
+                'sample_weekly_inventory_template.xlsx',
+            ),
         })
         return {
             'type': 'ir.actions.act_url',
-            'url': '/web/content/%s/%s/error_file/%s?download=true' % (self._name, self.id, self.error_filename or 'sample_weekly_inventory_template.xlsx'),
+            'url': self._get_binary_download_url('error_file', 'error_filename'),
             'target': 'self',
         }
 
@@ -247,77 +448,56 @@ class WeeklyInventoryUpload(models.Model):
             raise UserError(_('The uploaded file is empty.'))
 
         headers = [str(h).strip() if h is not None else '' for h in rows[0]]
-        valid_headers = [
-            ['Product', 'Location', 'Quantity'],
-            ['Product', 'Warehouse Location', 'Quantity'],
-            ['Product', 'Warehouse', 'Quantity'],
-        ]
-        if headers[:3] not in valid_headers:
-            raise ValidationError(_('Invalid template. Required first three columns are: Product, Location, Quantity.'))
+        is_wide_format = len(headers) >= 3 and headers[0] == 'Product Reference' and headers[1] == 'Product'
+        if is_wide_format:
+            total_rows, grouped_rows, error_rows = self._prepare_wide_format_entries(rows, headers)
+        else:
+            total_rows, grouped_rows, error_rows = self._prepare_long_format_entries(rows, headers)
 
-        total_rows = 0
         success_rows = 0
-        failed_rows = 0
-        error_rows = []
-        grouped_rows = defaultdict(list)
+        failed_rows = len(error_rows)
 
-        for index, row in enumerate(rows[1:], start=2):
-            if not row or all(cell in (None, '') for cell in row[:3]):
-                continue
-
-            total_rows += 1
-            product_value = (row[0] or '')
-            location_value = (row[1] or '')
-            quantity_value = row[2]
-            grouped_rows[(str(product_value).strip(), str(location_value).strip())].append((index, quantity_value))
-
-        for (product_name, location_name), grouped in grouped_rows.items():
-            # if duplicates exist, last quantity wins but all duplicate rows are logged
-            last_row_no, final_qty = grouped[-1]
-            duplicate_rows = [g[0] for g in grouped]
+        for grouped in grouped_rows.values():
+            last_entry = grouped[-1]
+            product_reference = last_entry['product_reference']
+            product_name = last_entry['product_name']
+            location_name = last_entry['location_name']
+            final_qty = last_entry['quantity']
+            last_row_no = last_entry['row_number']
+            duplicate_rows = [entry['row_number'] for entry in grouped]
             duplicate_note = ''
-            if len(grouped) > 1:
+            if len(duplicate_rows) > 1:
                 duplicate_note = _(' Duplicate rows detected at Excel rows: %s. Last row quantity used.') % ', '.join(map(str, duplicate_rows))
 
             try:
-                if not product_name:
-                    raise ValidationError(_('Product is missing.'))
+                if not product_reference and not product_name:
+                    raise ValidationError(_('Product reference and product are missing.'))
                 if not location_name:
                     raise ValidationError(_('Location is missing.'))
-                if final_qty in (None, ''):
-                    raise ValidationError(_('Quantity is missing.'))
 
-                try:
-                    final_qty = float(final_qty)
-                except Exception:
-                    raise ValidationError(_('Quantity must be numeric.'))
-
-                if final_qty < 0:
-                    raise ValidationError(_('Quantity cannot be negative.'))
-
-                product = self._find_product(product_name)
-                location = self._find_location(location_name)
+                product = self._find_product_from_row(product_reference, product_name)
+                location = last_entry['location'] or self._find_location(location_name)
                 quant = self.env['stock.quant'].search([
                     ('product_id', '=', product.id),
                     ('location_id', '=', location.id),
                 ], limit=1)
-                old_qty = quant.quantity if quant else 0.0
+                if not quant:
+                    raise ValidationError(_(
+                        'Product "%(product)s" is not available at location "%(location)s". Quantity was not updated.',
+                        product=product.display_name,
+                        location=location.complete_name,
+                    ))
 
-                if quant:
-                    quant.inventory_quantity = final_qty
-                    quant._apply_inventory()
-                else:
-                    new_quant = self.env['stock.quant'].with_context(inventory_mode=True).create({
-                        'product_id': product.id,
-                        'location_id': location.id,
-                        'inventory_quantity': final_qty,
-                    })
-                    new_quant._apply_inventory()
+                old_qty = quant.quantity
+
+                quant.inventory_quantity = final_qty
+                quant._apply_inventory()
 
                 self.env['weekly.inventory.upload.line'].create({
                     'upload_id': self.id,
                     'row_number': last_row_no,
-                    'product_name': product_name,
+                    'product_reference': product_reference or self._get_product_reference_value(product),
+                    'product_name': self._get_product_display_name(product),
                     'warehouse_name': location_name,
                     'product_id': product.id,
                     'warehouse_id': location.warehouse_id.id,
@@ -331,10 +511,18 @@ class WeeklyInventoryUpload(models.Model):
             except Exception as exc:
                 failed_rows += 1
                 message = str(exc)
-                error_rows.append([product_name, location_name, final_qty if final_qty not in (None, '') else '', message])
+                error_rows.append([
+                    last_row_no,
+                    product_reference,
+                    product_name,
+                    location_name,
+                    final_qty if final_qty not in (None, '') else '',
+                    message,
+                ])
                 self.env['weekly.inventory.upload.line'].create({
                     'upload_id': self.id,
                     'row_number': last_row_no,
+                    'product_reference': product_reference,
                     'product_name': product_name,
                     'warehouse_name': location_name,
                     'new_qty': final_qty if isinstance(final_qty, (int, float)) else 0.0,
@@ -342,7 +530,7 @@ class WeeklyInventoryUpload(models.Model):
                     'message': message,
                 })
 
-        summary = _('Inventory updated successfully for %s products') % success_rows
+        summary = _('Inventory updated successfully for %s entries') % success_rows
         if failed_rows:
             summary += _('. Failed rows: %s') % failed_rows
             self._generate_error_report(error_rows)
@@ -377,23 +565,29 @@ class WeeklyInventoryUpload(models.Model):
         workbook = Workbook()
         sheet = workbook.active
         sheet.title = 'Error Report'
-        sheet.append(['Product', 'Location', 'Quantity', 'Error Message'])
+        sheet.append(['Excel Row', 'Product Reference', 'Product', 'Location', 'Quantity', 'Error Message'])
         for row in error_rows:
             sheet.append(row)
         output = io.BytesIO()
         workbook.save(output)
         self.write({
             'error_file': base64.b64encode(output.getvalue()),
-            'error_filename': '%s_error_report.xlsx' % self.name,
+            'error_filename': self._sanitize_download_filename(
+                '%s_error_report.xlsx' % self.name,
+                'error_report.xlsx',
+            ),
         })
 
     def action_download_error_report(self):
         self.ensure_one()
         if not self.error_file:
             raise UserError(_('No error report found for this upload.'))
+        safe_filename = self._sanitize_download_filename(self.error_filename, 'error_report.xlsx')
+        if self.error_filename != safe_filename:
+            self.error_filename = safe_filename
         return {
             'type': 'ir.actions.act_url',
-            'url': '/web/content/%s/%s/error_file/%s?download=true' % (self._name, self.id, self.error_filename or 'error_report.xlsx'),
+            'url': self._get_binary_download_url('error_file', 'error_filename'),
             'target': 'self',
         }
 
@@ -451,6 +645,7 @@ class WeeklyInventoryUploadLine(models.Model):
 
     upload_id = fields.Many2one('weekly.inventory.upload', string='Upload', required=True, ondelete='cascade')
     row_number = fields.Integer(string='Excel Row')
+    product_reference = fields.Char(string='Product Reference')
     product_name = fields.Char(string='Product')
     warehouse_name = fields.Char(string='Location')
     product_id = fields.Many2one('product.product', string='Matched Product')
