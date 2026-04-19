@@ -1,9 +1,0 @@
-<odoo>
-    <record id="seq_inventory_variation" model="ir.sequence">
-        <field name="name">Inventory Variation</field>
-        <field name="code">inventory.variation</field>
-        <field name="prefix">IVR</field>
-        <field name="padding">4</field>
-        <field name="company_id" eval="False"/>
-    </record>
-</odoo>

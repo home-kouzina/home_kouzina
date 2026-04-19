@@ -1,9 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-
-all_import_flipkart_orders,import.flipkart.orders.all,model_import_flipkart_orders,,1,0,0,0
-user_import_flipkart_orders,import.flipkart.orders.user,model_import_flipkart_orders,odoo_multi_channel_sale.group_multi_channel_user,1,1,1,0
-manager_import_flipkart_orders,import.flipkart.orders.manager,model_import_flipkart_orders,odoo_multi_channel_sale.group_multi_channel_admin,1,1,1,1
-
-all_import_flipkart_products,import.flipkart.products.all,model_import_flipkart_products,,1,0,0,0
-user_import_flipkart_products,import.flipkart.products.user,model_import_flipkart_products,odoo_multi_channel_sale.group_multi_channel_user,1,1,1,0
-manager_import_flipkart_products,import.flipkart.products.manager,model_import_flipkart_products,odoo_multi_channel_sale.group_multi_channel_admin,1,1,1,1

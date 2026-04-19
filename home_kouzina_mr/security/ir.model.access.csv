@@ -1,5 +1,0 @@
-id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_material_requisition,material.requisition,model_material_requisition,,1,1,1,1
-access_material_requisition_line,material.requisition.line,model_material_requisition_line,,1,1,1,1
-access_purchase_requisition_excel_report_wizard,purchase.requisition.excel.report.wizard,model_purchase_requisition_excel_report_wizard,,1,1,1,1
-
