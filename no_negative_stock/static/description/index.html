@@ -1,0 +1,146 @@
+<section class="oe_container">
+    <div class="oe_row oe_spaced">
+        <h2 class="oe_slogan">No Negative Stock</h2>
+        <h3 class="oe_slogan">Prevent Stock Levels from Dropping Below Zero</h3>
+        <p class="oe_mt32">
+            This module prevents negative stock for stockable products in Odoo by blocking operations that would result in a stock level below zero.
+            It enhances inventory accuracy and ensures compliance with strict inventory management rules.
+            Exceptions can be configured per product, product category, or location if needed.
+        </p>
+    </div>
+
+    <div class="oe_row oe_spaced">
+        <h4>Key Features:</h4>
+        <ul>
+            <li>Blocks stock operations that would result in negative stock for stockable products</li>
+            <li>Allows exceptions via <strong>Allow Negative Stock</strong> on:
+                <ul>
+                    <li>Individual products</li>
+                    <li>Product categories</li>
+                    <li>Specific stock locations</li>
+                </ul>
+            </li>
+            <li>Works with deliveries, pickings, manufacturing orders, and internal transfers</li>
+            <li>Consumable products are unaffected</li>
+            <li>Simple configuration through Inventory settings</li>
+        </ul>
+    </div>
+
+    <div class="mb-4 bg-white"
+         style=" border: 1px solid #EBEEF2; border-radius: 6px; box-shadow: 0px 8px 20px -4px rgba(0, 0, 0, 0.10);">
+        <div>
+            <ul class="nav nav-tabs justify-content-center bg-white py-2"
+                id="myTab" role="tablist"
+                style="border-radius: 6px 6px 0 0;">
+                <li class="nav-item">
+                    <a aria-controls="overview"
+                       aria-selected="true"
+                       class="nav-link active" data-bs-toggle="tab"
+                       href="#overview" id="overview-tab" role="tab"
+                       style="color:#121212; font-weight:500; font-size:16px">
+                        Screenshots</a>
+                </li>
+            </ul>
+        </div>
+        <div class="tab-content p-md-5 p-2 py-3" id="myTabContent">
+            <div aria-labelledby="overview-tab"
+                 class="tab-pane fade show active" id="overview"
+                 role="tabpanel">
+
+                <!-- Screenshot 1: Product Level Configuration -->
+                <div class="position-relative mb-4" style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <h1 style="font-weight:700; font-size: 32px;">
+                                    Allow Negative Stock on Product
+                                </h1>
+                                <p style="font-size:16px; color:#555;">
+                                    Enable or disable negative stock for individual products from the Product form > General Information tab.
+                                </p>
+                                <div class="d-inline-block p-3 shadow-sm" style="background-color:#fff; border-radius:10px">
+                                    <img alt="Product Configuration" class="img-fluid" loading="lazy" src="s1.png">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screenshot 2: Product Category Configuration -->
+                <div class="position-relative mb-4" style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <h1 style="font-weight:700; font-size: 32px;">
+                                    Allow Negative Stock on Product Category
+                                </h1>
+                                <p style="font-size:16px; color:#555;">
+                                    Set global rules for product categories under Inventory > Configuration > Product Categories.
+                                </p>
+                                <div class="d-inline-block p-3 shadow-sm" style="background-color:#fff; border-radius:10px">
+                                    <img alt="Product Category Configuration" class="img-fluid" loading="lazy" src="s2.png">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screenshot 3: Location Level Configuration -->
+                <div class="position-relative mb-4" style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <h1 style="font-weight:700; font-size: 32px;">
+                                    Allow Negative Stock on Locations
+                                </h1>
+                                <p style="font-size:16px; color:#555;">
+                                    Enable negative stock by location via Inventory > Configuration > Warehouse Management > Locations.
+                                </p>
+                                <div class="d-inline-block p-3 shadow-sm" style="background-color:#fff; border-radius:10px">
+                                    <img alt="Location Configuration" class="img-fluid" loading="lazy" src="s3.png">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Screenshot 4: Negative Stock Error -->
+                <div class="position-relative mb-4" style="border-radius:10px; background-color:#f4f4f4">
+                    <div class="p-md-5 p-3 position-relative">
+                        <div class="row">
+                            <div class="col-md-12 text-center">
+                                <h1 style="font-weight:700; font-size: 32px;">
+                                    Negative Stock Blocked on Validation
+                                </h1>
+                                <p style="font-size:16px; color:#555;">
+                                    When trying to process a delivery or manufacturing order that causes negative stock, an error will be shown and the operation blocked.
+                                </p>
+                                <div class="d-inline-block p-3 shadow-sm" style="background-color:#fff; border-radius:10px">
+                                    <img alt="Negative Stock Error" class="img-fluid" loading="lazy" src="s4.png">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div class="oe_row oe_spaced">
+        <h4>Usage:</h4>
+        <p>
+            When validating a stock operation (e.g., delivery, picking, or manufacturing) that would reduce stock below zero, Odoo will block the action for stockable products unless exceptions are configured.
+            Consumable products can still go negative.
+        </p>
+    </div>
+
+    <div class="oe_row oe_spaced">
+        <h4>Technical Details:</h4>
+        <ul>
+            <li>Works out-of-the-box with Odoo 18</li>
+            <li>Fully integrated with Inventory and Manufacturing modules</li>
+            <li>No custom code or scripts required</li>
+        </ul>
+    </div>
+</section>

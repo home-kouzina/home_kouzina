@@ -1,0 +1,12 @@
+<odoo>
+    <record id="view_warehouse_form_inherit_invoice_prefix" model="ir.ui.view">
+        <field name="name">stock.warehouse.form.invoice.prefix</field>
+        <field name="model">stock.warehouse</field>
+        <field name="inherit_id" ref="stock.view_warehouse"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='code']" position="after">
+                <field name="invoice_prefix_sequence"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

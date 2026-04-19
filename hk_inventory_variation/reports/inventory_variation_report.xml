@@ -1,0 +1,132 @@
+<odoo>
+    <record id="action_report_inventory_variation" model="ir.actions.report">
+        <field name="name">Inventory Variation Report</field>
+        <field name="model">inventory.variation</field>
+        <field name="report_type">qweb-pdf</field>
+        <field name="report_name">hk_inventory_variation.inventory_variation_report_pdf</field>
+        <field name="report_file">hk_inventory_variation.inventory_variation_report_pdf</field>
+        <field name="binding_type">report</field>
+    </record>
+
+    <template id="inventory_variation_report_pdf">
+        <t t-call="web.basic_layout">
+            <t t-set="doc" t-value="docs[0]"/>
+            <div class="page" style="position:relative; font-size:14px; background-color:#F9F9F9; padding:20px;">
+
+                <!-- WATERMARK -->
+                <div style="
+                    position:absolute;
+                    top:50%;
+                    left:50%;
+                    transform:translate(-50%, -50%) rotate(-45deg);
+                    font-size:80px;
+                    color:rgba(200,200,200,0.1);
+                    z-index:0;
+                    white-space: nowrap;
+                    text-align:center;
+                ">
+                    <t t-esc="doc.company_id.name"/>
+                </div>
+
+                <!-- HEADER -->
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px; font-size:16px; position:relative; z-index:1;">
+                    <h2 style="text-align:center; color:#1F4E78; margin:0; font-size:24px;">
+                        Inventory Variation Report
+                    </h2>
+                    <div style="text-align:right; font-size:14px;">
+                        <div>
+                            <strong>Date:</strong>
+                            <t t-esc="doc.date"/>
+                        </div>
+                        <div>
+                            <strong>Reference:</strong>
+                            <t t-esc="doc.name"/>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COMPANY & WAREHOUSE INFO -->
+                <div style="margin-bottom:20px; font-size:14px; position:relative; z-index:1;">
+                    <strong>Company:</strong>
+                    <t t-esc="doc.company_id.name"/> &amp;;
+                    <strong>Warehouse:</strong>
+                    <!-- CHANGED: show warehouses in list -->
+                    <t t-foreach="doc.warehouse_ids" t-as="wh">
+                        <div><t t-esc="wh.name"/></div>
+                    </t>
+                </div>
+
+                <!-- TABLE -->
+                <table class="table table-bordered"
+                       style="width:100%; margin-top:10px; border-collapse: collapse; font-size:14px; position:relative; z-index:1;"
+                       border="1">
+                    <thead style="background-color:#D9EDF7; color:#1F4E78; font-size:14px;">
+                        <tr>
+                            <th>S.No.</th>
+                            <th>Product Code</th>
+                            <th>Product Name</th>
+                            <th>Product Type</th>
+                            <th>Sale Price</th>
+                            <th>Location</th>
+                            <th>Theoretical Qty</th>
+                            <th>Physical Qty</th>
+                            <th>Variation</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size:14px;">
+                        <t t-set="counter" t-value="1"/>
+                        <t t-foreach="doc.line_ids.filtered(lambda l: l.variation_qty != 0)" t-as="line">
+                            <tr t-attf-style="background-color: #{'FDE9D9' if line.variation_qty &lt; 0 else 'D9F2DE'};">
+                                <td>
+                                    <t t-esc="counter"/>
+                                    <t t-set="counter" t-value="counter + 1"/>
+                                </td>
+                                <td><t t-esc="line.product_id.default_code"/></td>
+                                <td><t t-esc="line.product_id.name"/></td>
+                                <td><t t-esc="line.product_type"/></td>
+                                <td><t t-esc="line.sale_price"/></td>
+                                <td><t t-esc="line.location_id.complete_name"/></td>
+                                <td><t t-esc="line.theoretical_qty"/></td>
+                                <td><t t-esc="line.physical_qty"/></td>
+                                <td><t t-esc="line.variation_qty"/></td>
+                            </tr>
+                        </t>
+
+                        <!-- TOTALS -->
+                   
+                            <t t-set="report_lines"
+                            t-value="doc.line_ids.filtered(lambda l: l.variation_qty != 0)"/>
+
+                            <!-- ADDED: total sale price -->
+                            <t t-set="total_sale_price"
+                            t-value="sum(l.sale_price for l in report_lines)"/>
+
+                            <t t-set="total_theoretical"
+                            t-value="sum(l.theoretical_qty for l in report_lines)"/>
+
+                            <t t-set="total_physical"
+                            t-value="sum(l.physical_qty for l in report_lines)"/>
+
+                            <t t-set="total_variation"
+                            t-value="sum(l.variation_qty for l in report_lines)"/>
+
+                            <tr style="font-weight:bold; background-color:#D7E4BC; font-size:14px;">
+                                <!-- CHANGED: shifted total label by 2 columns because Product Type and Sale Price were added -->
+                                <td colspan="4" style="text-align:right;">Total</td>
+
+                                <!-- ADDED: total sale price column -->
+                                <td><t t-esc="total_sale_price"/></td>
+
+                                <!-- CHANGED: keep Location column blank in total row -->
+                                <td></td>
+
+                                <td><t t-esc="total_theoretical"/></td>
+                                <td><t t-esc="total_physical"/></td>
+                                <td><t t-esc="total_variation"/></td>
+                            </tr>
+                    </tbody>
+                </table>
+            </div>
+        </t>
+    </template>
+</odoo>

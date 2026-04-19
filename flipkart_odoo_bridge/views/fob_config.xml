@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2019-Present Webkul Software Pvt. Ltd. (<https://webkul.com/>) -->
+<!-- See LICENSE file for full copyright and licensing details. -->
+<odoo>
+    <data>
+        <!-- #######################    Flipkart  configuration ################################################## -->
+        <record id="inherited_form_multi_channel_sale" model="ir.ui.view">
+            <field name="name">multi.channel.sale.inherited</field>
+            <field name="model">multi.channel.sale</field>
+            <field name="inherit_id" ref="odoo_multi_channel_sale.multi_channel_view_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//group[@name='import_buttons']" position="inside">
+                  <group col="1" invisible="channel != 'flipkart'" class="text-center">
+                    <separator style="margin-left:40%%;" string='Import From/Export To Flipkart' />
+                        <group col="6" invisible="channel != 'flipkart'">
+                            <button style="margin-left:150px;" invisible="channel != 'flipkart' or state != 'validate'" name="flipkart_odoo_bridge.action_id_import_flipkart_orders" type="action" class="oe_highlight wk_operation_btn box" icon="fa-6x fa-shopping-cart" help="It will import  Orders on Odoo from flipkart">
+                                <div>
+                                    <span> Import Orders</span>
+                                    <i class='fa fa-fw fa-cloud-download'/>
+                                </div>
+                            </button>
+                            <button style="margin-left:150px;width:177px" invisible="channel != 'flipkart' or state != 'validate'" name="flipkart_odoo_bridge.action_id_export_odoo_templates_button_operation" type="action" class="oe_highlight wk_operation_btn box" icon="fa-6x fa-dropbox" help="It will Export/Update  Product on Odoo to Flipkart">
+                            <div>
+                                <span>Export/Update Product</span>
+                                
+                                    <i class='fa fa-fw fa-cloud-upload'/>
+                            </div>
+                            </button>
+                       </group>
+                    </group>   
+                </xpath>
+
+                <!-- To hide the import and export button of multi channel sale -->
+                <xpath expr="//group[@name='operation_button_group']" position="attributes">
+                    <attribute name='invisible'>channel == 'flipkart'</attribute>
+                </xpath>
+
+                <!-- To hide the cron page of multi channel sale -->
+                <xpath expr="//page[@name='crons']" position="attributes">
+                    <attribute name='invisible'>channel == 'flipkart'</attribute>
+                </xpath>
+
+                <group name="credentials" position='inside'>
+                    <group name="logininfo" invisible="channel != 'flipkart'" col="2" colspan="2">
+                        <field name="flipkart_app_id" readonly="state == 'validate'" required="channel == 'flipkart'" invisible="channel != 'flipkart'"/>
+                        <field name="flipkart_secret_id" readonly="state == 'validate'" required="channel == 'flipkart'" invisible="channel != 'flipkart'"/>
+                        <field name="flipkart_access_token" invisible="channel != 'flipkart'"/>
+                    </group>
+                    <div invisible="flipkart_access_token == False">
+                        <label for="generate_flipkart_access_token" string="For generating new access token click here"/>
+                        <button string="Generate Token" type="object" name="generate_flipkart_access_token" class="oe_inline oe_highlight"/>
+                    </div>
+                    
+                </group>
+
+                <page name="configuration" position='after'>
+                    <page name="product_configuration" string="Product Config" invisible="channel != 'flipkart' or state != 'validate'"> 
+                        <center>
+                            <separator colspan="5" string="Product Export Configuration"/>
+                        </center>
+                        <group col="4" string="Shipping">
+                            <field name="flipkart_national_shipping_charge" required="channel == 'flipkart'"/>
+                            <field name="flipkart_zonal_shipping_charge" required="channel == 'flipkart'"/>
+                            <field name="flipkart_local_shipping_charge" required="channel == 'flipkart'"/>
+                        </group>
+                        <group col="4" string="Packaging">
+                            <field name="flipkart_package_length" required="channel == 'flipkart'"/>
+                            <field name="flipkart_package_breadth" required="channel == 'flipkart'"/>
+                            <field name="flipkart_package_height" required="channel == 'flipkart'"/>
+                            <field name="flipkart_package_weight" required="channel == 'flipkart'"/>
+                        </group>
+                        <group col="4" string="Other">
+                            <field name="flipkart_listing_status" required="channel == 'flipkart'"/>
+                            <field name="flipkart_goods_services_tax" required="channel == 'flipkart'"/>
+                            <field name="flipkart_fulfilled_by" required="channel == 'flipkart'"/>
+                            <field name="flipkart_procurement_sla" required="channel == 'flipkart'"/>
+                        </group>
+                    </page>
+
+                    <page name="set_flipkart_cron_congiguration" string="Cron Configuration" invisible="channel != 'flipkart' or state != 'validate'">
+                        <center>
+                            <separator colspan="5" string="Configure Cron to import from Flipkart"/>
+                        </center>
+                        <separator string="Configure Cron for Orders"/>
+                        <group name="col1">
+                            <field name="flipkart_configure_order_cron" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                        <group name="col2" col="4" colspan="4" invisible="flipkart_configure_order_cron != 'yes'">
+                            <field name="flipkart_order_cron_nxtcall" readonly="flipkart_order_cron_state == 'start'" required="flipkart_configure_order_cron == 'yes'" class="oe_inline"/>
+                            <field name="flipkart_order_cron_interval_number" readonly="flipkart_order_cron_state == 'start'" required="flipkart_configure_order_cron == 'yes'" class="oe_inline"/>
+                            <field name="flipkart_order_cron_interval_type" readonly="flipkart_order_cron_state == 'start'" required="flipkart_configure_order_cron == 'yes'" class="oe_inline"/>
+                            <field name="flipkart_order_status" readonly="flipkart_order_cron_state == 'start'" class="oe_inline"/>
+                        </group>
+                        <div invisible="flipkart_configure_order_cron != 'yes'">
+                            <button string="Job Start" type="object" name="import_flipkart_orders_cron_start" invisible="flipkart_order_cron_state == 'start'" class="oe_highlight"/>
+                            <button string="Job Stop" type="object" name="import_flipkart_orders_cron_stop" invisible="flipkart_order_cron_state == 'stop'" class="oe_highlight"/>
+                            <field name="flipkart_order_cron_state" class="oe_inline" widget="statusbar"/>
+                        </div>
+                    </page>
+                        
+                </page>
+            </field>
+        </record>
+    </data>
+</odoo>
