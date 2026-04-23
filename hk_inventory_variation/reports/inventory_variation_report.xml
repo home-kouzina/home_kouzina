@@ -50,7 +50,10 @@
                     <strong>Company:</strong>
                     <t t-esc="doc.company_id.name"/> &amp;;
                     <strong>Warehouse:</strong>
-                    <t t-esc="doc.warehouse_id.name"/>
+                    <!-- CHANGED: show warehouses in list -->
+                    <t t-foreach="doc.warehouse_ids" t-as="wh">
+                        <div><t t-esc="wh.name"/></div>
+                    </t>
                 </div>
 
                 <!-- TABLE -->
@@ -62,6 +65,8 @@
                             <th>S.No.</th>
                             <th>Product Code</th>
                             <th>Product Name</th>
+                            <th>Product Type</th>
+                            <th>Sale Price</th>
                             <th>Location</th>
                             <th>Theoretical Qty</th>
                             <th>Physical Qty</th>
@@ -78,7 +83,9 @@
                                 </td>
                                 <td><t t-esc="line.product_id.default_code"/></td>
                                 <td><t t-esc="line.product_id.name"/></td>
-                                <td><t t-esc="line.location_id.name"/></td>
+                                <td><t t-esc="line.product_type"/></td>
+                                <td><t t-esc="line.sale_price"/></td>
+                                <td><t t-esc="line.location_id.complete_name"/></td>
                                 <td><t t-esc="line.theoretical_qty"/></td>
                                 <td><t t-esc="line.physical_qty"/></td>
                                 <td><t t-esc="line.variation_qty"/></td>
@@ -86,19 +93,37 @@
                         </t>
 
                         <!-- TOTALS -->
-                        <t t-set="total_theoretical"
-                           t-value="sum(l.theoretical_qty for l in doc.line_ids.filtered(lambda l: l.variation_qty != 0))"/>
-                        <t t-set="total_physical"
-                           t-value="sum(l.physical_qty for l in doc.line_ids.filtered(lambda l: l.variation_qty != 0))"/>
-                        <t t-set="total_variation"
-                           t-value="sum(l.variation_qty for l in doc.line_ids.filtered(lambda l: l.variation_qty != 0))"/>
+                   
+                            <t t-set="report_lines"
+                            t-value="doc.line_ids.filtered(lambda l: l.variation_qty != 0)"/>
 
-                        <tr style="font-weight:bold; background-color:#D7E4BC; font-size:14px;">
-                            <td colspan="4" style="text-align:right;">Total</td>
-                            <td><t t-esc="total_theoretical"/></td>
-                            <td><t t-esc="total_physical"/></td>
-                            <td><t t-esc="total_variation"/></td>
-                        </tr>
+                            <!-- ADDED: total sale price -->
+                            <t t-set="total_sale_price"
+                            t-value="sum(l.sale_price for l in report_lines)"/>
+
+                            <t t-set="total_theoretical"
+                            t-value="sum(l.theoretical_qty for l in report_lines)"/>
+
+                            <t t-set="total_physical"
+                            t-value="sum(l.physical_qty for l in report_lines)"/>
+
+                            <t t-set="total_variation"
+                            t-value="sum(l.variation_qty for l in report_lines)"/>
+
+                            <tr style="font-weight:bold; background-color:#D7E4BC; font-size:14px;">
+                                <!-- CHANGED: shifted total label by 2 columns because Product Type and Sale Price were added -->
+                                <td colspan="4" style="text-align:right;">Total</td>
+
+                                <!-- ADDED: total sale price column -->
+                                <td><t t-esc="total_sale_price"/></td>
+
+                                <!-- CHANGED: keep Location column blank in total row -->
+                                <td></td>
+
+                                <td><t t-esc="total_theoretical"/></td>
+                                <td><t t-esc="total_physical"/></td>
+                                <td><t t-esc="total_variation"/></td>
+                            </tr>
                     </tbody>
                 </table>
             </div>

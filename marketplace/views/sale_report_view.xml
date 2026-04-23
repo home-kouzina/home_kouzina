@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_sale_report_search_inherit_marketplace" model="ir.ui.view">
+        <field name="name">sale.report.search.marketplace.inherit</field>
+        <field name="model">sale.report</field>
+        <field name="inherit_id" ref="sale.view_order_product_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search/field[@name='country_id']" position="after">
+                <field name="marketplace_type"/>
+
+            </xpath>
+
+            <xpath expr="//search/group/filter[@name='company']" position="after">
+                <filter string="Marketplace"
+                        name="group_by_marketplace_type"
+                        context="{'group_by': 'marketplace_type'}"/>
+                <filter string="City"
+                        name="group_by_city"
+                        context="{'group_by': 'city'}"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

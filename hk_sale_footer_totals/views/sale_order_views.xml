@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_order_form_inherit_footer_breakdown" model="ir.ui.view">
+        <field name="name">sale.order.form.inherit.footer.breakdown</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@name='sale_total']/field[@name='tax_totals']" position="before">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="o_form_label">Discount</span>
+                    <field name="total_discount_rs"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           nolabel="1"
+                           readonly="1"
+                           class="oe_inline"/>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="o_form_label">Fleet Charges</span>
+                    <field name="fleet_charges_rs"
+                           widget="monetary"
+                           options="{'currency_field': 'currency_id'}"
+                           nolabel="1"
+                           readonly="1"
+                           class="oe_inline"/>
+                </div>
+            </xpath>
+        </field>
+    </record>
+</odoo>

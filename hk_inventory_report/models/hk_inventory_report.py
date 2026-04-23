@@ -90,7 +90,7 @@ class HKInventoryReport(models.TransientModel):
         # ----------------------
         # HEADER
         # ----------------------
-        header = ['Product Name', 'SKU', 'Variant', 'Regional Language Name']
+        header = ['Product Name','Product Type', 'SKU', 'Variant', 'Regional Language Name']  # Added the Header Of Product Type
         for wh in warehouses:
             header.append(wh.name)
         header.append('Total Quantity')
@@ -115,6 +115,10 @@ class HKInventoryReport(models.TransientModel):
             sku, base_name, variant = self._split_product_details(product.display_name or '')
 
             worksheet.write(row_num, col_num, base_name, text_fmt)  # Product Name
+            col_num += 1
+             # ADDED: Product Type column value based on is_finished field
+            product_type = 'Finished Product' if product.is_finished_good else 'Raw Material'
+            worksheet.write(row_num, col_num, product_type, text_fmt)  # Product Type
             col_num += 1
             worksheet.write(row_num, col_num, sku, text_fmt)  # SKU
             col_num += 1
@@ -203,6 +207,7 @@ class HKInventoryPDF(models.AbstractModel):
                 'sku': sku,
                 'variant': variant,
                 'regional_language_name': product.regional_language_name or '',
+                'product_type': 'Finished Product' if product.is_finished_good else 'Raw Material',
                 'quantities': wh_qty,
                 'total': total_qty,
             })

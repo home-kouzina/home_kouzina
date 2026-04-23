@@ -8,7 +8,8 @@ class SaleOrder(models.Model):
         ('flipkart', 'Flipkart'),
         ('amazon', 'Amazon'),
         ('blinkit', 'Blinkit'),
-        ('shopify', 'Shopify')
+        ('shopify', 'Shopify'),
+        ('homekozin','HomeKouzina')
     ], string="Marketplace")
 
     

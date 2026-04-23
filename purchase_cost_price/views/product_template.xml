@@ -1,0 +1,12 @@
+<odoo>
+    <record id="product_template_form_inherit_service_cost" model="ir.ui.view">
+        <field name="name">product.template.form.inherit.service.cost</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='is_finished_good']" position="after">
+                <field name="is_service_cost"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

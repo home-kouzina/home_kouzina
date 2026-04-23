@@ -8,6 +8,7 @@
         'sale_management',
     ],
     'data': [
+        'views/sale_report_view.xml',
         'views/sale_order_view.xml',
     ],
     'installable': True,
