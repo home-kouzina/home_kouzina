@@ -31,20 +31,22 @@ class PurchaseOrder(models.Model):
                 continue
 
             total_service_cost = sum(service_lines.mapped("price_subtotal"))
-            total_unit_price = sum(product_lines.mapped("price_unit"))
+            total_product_amount = sum(product_lines.mapped("price_subtotal"))
 
             
 
-            if not total_unit_price:
-                _logger.warning("Total unit price is zero. Skipping.")
+            if not total_product_amount:
+                _logger.warning("Total product amount is zero. Skipping.")
                 continue
 
             for line in product_lines:
+                if not line.product_qty:
+                    continue
                 product = line.product_id
 
-                ratio = line.price_unit / total_unit_price
+                ratio = line.price_subtotal / total_product_amount
                 service_share = ratio * total_service_cost
-                final_cost = line.price_unit + service_share
+                final_cost = (line.price_total + service_share) / line.product_qty
 
                 product.standard_price = final_cost
 
