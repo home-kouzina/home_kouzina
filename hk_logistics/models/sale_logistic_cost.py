@@ -21,14 +21,14 @@ class SaleOrder(models.Model):
             logistic_total = sum(line.price_subtotal for line in logistic_lines)
             product_lines = order.order_line.filtered(lambda l: l.product_id.type != 'service')
 
-            total_qty = sum(product_lines.mapped('product_uom_qty'))
-            if total_qty == 0:
+            total_product_amount = sum(product_lines.mapped('price_subtotal'))
+            if total_product_amount == 0:
                 continue
 
-            per_unit_logistic =  total_qty / logistic_total
-
             for line in product_lines:
-                old_price = line.price_unit
-                new_price = old_price + per_unit_logistic
-                line.product_template_id.standard_price = new_price
+                if not line.product_uom_qty:
+                    continue
+                logistic_share = (line.price_subtotal / total_product_amount) * logistic_total
+                new_price = (line.price_total + logistic_share) / line.product_uom_qty
+                line.product_id.product_tmpl_id.standard_price = new_price
         return res

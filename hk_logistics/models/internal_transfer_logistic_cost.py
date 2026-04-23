@@ -51,17 +51,23 @@ class StockPicking(models.Model):
                 lambda m: m.product_id.type != 'service'
             )
 
-            total_qty = sum(product_moves.mapped('product_uom_qty'))
-            if total_qty == 0:
+            product_values = {
+                move: move.product_id.standard_price * move.product_uom_qty
+                for move in product_moves
+                if move.product_uom_qty
+            }
+            total_product_value = sum(product_values.values())
+            if total_product_value == 0:
                 continue
 
-            # Logistic cost per unit
-            per_unit_logistic = total_qty / logistic_total
-
-            # Update standard price for each product
+            # Update standard price for each product using value-weighted allocation.
             for move in product_moves:
+                if move not in product_values:
+                    continue
                 product = move.product_id
                 old_cost = product.standard_price
+                logistic_share = (product_values[move] / total_product_value) * logistic_total
+                per_unit_logistic = logistic_share / move.product_uom_qty
                 new_cost = old_cost + per_unit_logistic
                 product.standard_price = new_cost
 
