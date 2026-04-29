@@ -12,7 +12,9 @@ class SaleOrder(models.Model):
         ('homekozin','HomeKouzina')
     ], string="Marketplace")
 
-    
+    partner_shipping_id = fields.Many2one('res.partner', string="Shipping Address")
+    partner_invoice_id = fields.Many2one('res.partner', string="Invoice Address")
+
     # Master field to control which marketplace fields are visible
     # --- Flipkart Fields ---
     flipkart_order_id = fields.Char(string="Flipkart Order ID")
