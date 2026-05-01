@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_partner_form_inherit_documents" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.documents</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="odoo_multi_channel_sale.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//page[@name='channel']" position="after">
+                <page name="hk_documents" string="Others">
+                    <group>
+                        <group>
+                            <field name="cin_image" widget="image"/>
+                        </group>
+                        <group>
+                            <field name="other_image" widget="image"/>
+                        </group>
+                    </group>
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_partner_form_inherit_address_gst" model="ir.ui.view">
+        <field name="name">res.partner.form.inherit.address.gst</field>
+        <field name="model">res.partner</field>
+        <field name="inherit_id" ref="base.view_partner_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='child_ids']/form//field[@name='name']" position="after">
+                <field name="gst_number" invisible="type not in ['invoice', 'delivery']"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

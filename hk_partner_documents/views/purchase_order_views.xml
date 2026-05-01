@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_purchase_order_form_inherit_documents" model="ir.ui.view">
+        <field name="name">purchase.order.form.inherit.documents</field>
+        <field name="model">purchase.order</field>
+        <field name="inherit_id" ref="purchase.purchase_order_form"/>
+        <field name="arch" type="xml">
+<!--            <xpath expr="//field[@name='partner_id']" position="after">-->
+<!--                <field name="shipping_address_id"-->
+<!--                       widget="res_partner_many2one"-->
+<!--                       domain="[('id', 'child_of', partner_id), ('type', 'in', ['delivery', 'contact', False])]"-->
+<!--                       context="{'show_address': 1, 'default_type': 'delivery'}"-->
+<!--                       options="{'no_create': True, 'no_create_edit': True}"/>-->
+<!--            </xpath>-->
+            <xpath expr="//field[@name='date_order']" position="attributes">
+                <attribute name="string">Order Date</attribute>
+            </xpath>
+            <xpath expr="//field[@name='date_planned']" position="attributes">
+                <attribute name="string">Delivery Date</attribute>
+            </xpath>
+        </field>
+    </record>
+</odoo>
