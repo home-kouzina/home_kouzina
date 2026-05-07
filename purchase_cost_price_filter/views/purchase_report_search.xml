@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Adds product cost from the product variant/template to Purchase Analysis. -->
+    <record id="purchase_report_search_cost_price" model="ir.ui.view">
+        <field name="name">purchase.report.search.cost.price</field>
+        <field name="model">purchase.report</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='product_id']" position="after">
+                <field name="product_standard_price"/>
+            </xpath>
+            <xpath expr="//group[@expand='1']" position="inside">
+                <filter
+                    string="Cost Price"
+                    name="groupby_product_standard_price"
+                    context="{'group_by': 'product_standard_price'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="purchase_report_view_list_cost_price" model="ir.ui.view">
+        <field name="name">purchase.report.view.list.cost.price</field>
+        <field name="model">purchase.report</field>
+        <field name="inherit_id" ref="purchase.purchase_report_view_tree"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='price_total']" position="after">
+                <field name="product_standard_price"
+                       string="Cost Price"
+                       widget="monetary"
+                       optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="purchase_report_view_pivot_cost_price" model="ir.ui.view">
+        <field name="name">purchase.report.view.pivot.cost.price</field>
+        <field name="model">purchase.report</field>
+        <field name="inherit_id" ref="purchase.view_purchase_order_pivot"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='price_total']" position="after">
+                <field name="product_standard_price" type="measure"/>
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

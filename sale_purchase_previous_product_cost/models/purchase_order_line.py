@@ -28,6 +28,10 @@ class PurchaseOrderLine(models.Model):
     purchase_date = fields.Datetime(string='Purchase Date', store=True,
                                     related='order_id.date_order',
                                     help='Purchase order date')
+    cost_price = fields.Float(string='Cost Price',
+                              related='product_id.standard_price',
+                              digits='Product Price',
+                              help='Calculated cost price of the product.')
 
     def action_get_product_form(self):
         """This function is to view product form in purchase order line"""

@@ -8,6 +8,17 @@
 
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="marketplace_type"/>
+<!--                <field name="partner_shipping_id"/>-->
+                <field name="partner_shipping_id"
+                    widget="res_partner_many2one"
+                    domain="[('id', 'child_of', partner_id), ('type', 'in', ['delivery', 'contact', False])]"
+                    context="{'show_address': 1, 'default_type': 'delivery'}"
+                    options="{'no_create': True, 'no_create_edit': True}"/>
+                <field name="partner_invoice_id"
+                    widget="res_partner_many2one"
+                    domain="[('id', 'child_of', partner_id), ('type', 'in', ['invoice','contact', False])]"
+                    context="{'show_address': 1, 'default_type': 'invoice'}"
+                    options="{'no_create': True, 'no_create_edit': True}"/>
             </xpath>
 
             <xpath expr="//page[@name='customer_signature']" position="after">
