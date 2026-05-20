@@ -11,6 +11,7 @@
         "odoo_multi_channel_sale",
         "purchase",
         "sale_management",
+        "purchase_stock"
     ],
     "data": [
         "views/res_partner_views.xml",
