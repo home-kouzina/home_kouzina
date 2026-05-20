@@ -1,14 +1,54 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <template id="report_purchaseorder_document_inherit_seller_address_label" inherit_id="purchase.report_purchaseorder_document">
+    <template id="report_purchaseorder_document_inherit_seller_address_label"
+              inherit_id="purchase.report_purchaseorder_document"
+              priority="30">
         <xpath expr="//t[@t-set='address']/div[@t-field='o.partner_id']" position="before">
             <strong class="d-block mb-1">Seller Address</strong>
         </xpath>
+        <xpath expr="//div[@name='purchase_shipping_address']" position="after">
+            <div t-if="o.billing_warehouse_id" class="mt-3">
+                <strong>Billing Address:</strong>
+                <br/>
+                <span t-field="o.billing_warehouse_id.name"/>
+                <div t-field="o.billing_warehouse_id.partner_id"
+                     t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'/>
+            </div>
+        </xpath>
+        <xpath expr="//t[@t-set='information_block']//div[@t-if='o.picking_type_id and o.picking_type_id.warehouse_id']" position="after">
+            <div t-if="o.billing_warehouse_id" class="mt-3">
+                <strong>Billing Address:</strong>
+                <br/>
+                <span t-field="o.billing_warehouse_id.name"/>
+                <div t-field="o.billing_warehouse_id.partner_id"
+                     t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'/>
+            </div>
+        </xpath>
     </template>
 
-    <template id="report_purchasequotation_document_inherit_seller_address_label" inherit_id="purchase.report_purchasequotation_document">
+    <template id="report_purchasequotation_document_inherit_seller_address_label"
+              inherit_id="purchase.report_purchasequotation_document"
+              priority="30">
         <xpath expr="//t[@t-set='address']/div[@t-field='o.partner_id']" position="before">
             <strong class="d-block mb-1">Seller Address</strong>
+        </xpath>
+        <xpath expr="//div[@name='purchase_shipping_address']" position="after">
+            <div t-if="o.billing_warehouse_id" class="mt-3">
+                <strong>Billing Address:</strong>
+                <br/>
+                <span t-field="o.billing_warehouse_id.name"/>
+                <div t-field="o.billing_warehouse_id.partner_id"
+                     t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'/>
+            </div>
+        </xpath>
+        <xpath expr="//t[@t-set='information_block']//div[@t-if='o.picking_type_id and o.picking_type_id.warehouse_id']" position="after">
+            <div t-if="o.billing_warehouse_id" class="mt-3">
+                <strong>Billing Address:</strong>
+                <br/>
+                <span t-field="o.billing_warehouse_id.name"/>
+                <div t-field="o.billing_warehouse_id.partner_id"
+                     t-options='{"widget": "contact", "fields": ["address", "phone"], "no_marker": True, "phone_icons": True}'/>
+            </div>
         </xpath>
     </template>
 </odoo>
