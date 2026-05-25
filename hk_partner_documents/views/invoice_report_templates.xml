@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit_partner_addresses" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[@name='shipping_address_block']" position="attributes">
+            <attribute name="groups"/>
+        </xpath>
+        <xpath expr="//div[@name='shipping_address_block']/div[@t-field='o.partner_shipping_id']" position="attributes">
+            <attribute name="t-options">{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="before">
+            <strong class="d-block mb-1">Buyer Address</strong>
+        </xpath>
+    </template>
+</odoo>
