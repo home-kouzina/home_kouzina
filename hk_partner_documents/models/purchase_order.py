@@ -4,6 +4,10 @@ from odoo import api, fields, models
 class PurchaseOrder(models.Model):
     _inherit = 'purchase.order'
 
+    vendor_phone = fields.Char(
+        string="Vendor Phone",
+        compute="_compute_vendor_phone",
+    )
     billing_warehouse_id = fields.Many2one(
         'stock.warehouse',
         string="Billing Address",
@@ -13,6 +17,11 @@ class PurchaseOrder(models.Model):
     picking_type_id = fields.Many2one(
         domain="['|', ('warehouse_id', '=', False), ('warehouse_id.company_id', 'child_of', company_id)]",
     )
+
+    @api.depends("partner_id.phone", "partner_id.mobile")
+    def _compute_vendor_phone(self):
+        for order in self:
+            order.vendor_phone = order.partner_id.phone or order.partner_id.mobile
 
     @api.onchange('company_id')
     def _onchange_company_id(self):

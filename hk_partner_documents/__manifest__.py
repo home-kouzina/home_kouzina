@@ -6,6 +6,7 @@
     "author": "Home Kouzina",
     "license": "LGPL-3",
     "depends": [
+        "account",
         "base",
         "marketplace",
         "odoo_multi_channel_sale",
@@ -17,6 +18,7 @@
         "views/res_partner_views.xml",
         "views/sale_order_views.xml",
         "views/sale_report_templates.xml",
+        "views/invoice_report_templates.xml",
         "views/purchase_order_views.xml",
         "views/purchase_report_templates.xml",
     ],
