@@ -11,7 +11,6 @@ class PurchaseOrder(models.Model):
     billing_warehouse_id = fields.Many2one(
         'stock.warehouse',
         string="Billing Address",
-        domain="[('company_id', 'child_of', company_id)]",
     )
 
     picking_type_id = fields.Many2one(
