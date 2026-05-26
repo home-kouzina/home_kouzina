@@ -17,7 +17,8 @@
                 <field name="vendor_phone"/>
             </xpath>
             <xpath expr="//field[@name='picking_type_id']" position="attributes">
-                <attribute name="domain">[('code','=','incoming'), '|', ('warehouse_id', '=', False), ('warehouse_id.company_id', 'child_of', company_id)]</attribute>
+                <attribute name="domain">[('code', '=', 'incoming')]</attribute>
+<!--                <attribute name="domain">[('code','=','incoming'), '|', ('warehouse_id', '=', False), ('warehouse_id.company_id', 'child_of', company_id)]</attribute>-->
             </xpath>
             <xpath expr="//field[@name='date_order']" position="attributes">
                 <attribute name="string">Order Date</attribute>
