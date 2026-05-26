@@ -5,12 +5,22 @@
             <strong class="d-block mb-1">Buyer Address</strong>
         </xpath>
         <xpath expr="//t[@t-set='address']/div[@t-field='doc.partner_id']" position="attributes">
-            <attribute name="t-options">{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}</attribute>
+            <attribute name="t-options">{"widget": "contact", "fields": ["address", "name"], "no_marker": True}</attribute>
         </xpath>
-        <xpath expr="//t[@t-set='information_block']" position="replace">
+        <xpath expr="//t[@t-set='address']/div[@t-field='doc.partner_id']" position="after">
+            <div t-if="doc.customer_phone">
+                <i class="fa fa-phone me-1"/>
+                <span t-field="doc.customer_phone"/>
+            </div>
+        </xpath>
+        <xpath expr="//t[contains(@t-if, 'doc.partner_shipping_id == doc.partner_invoice_id') and contains(@t-if, 'or doc.partner_shipping_id != doc.partner_invoice_id')]" position="replace">
             <t t-set="information_block">
                 <strong class="d-block mt-3">Shipping Address</strong>
-                <div t-field="doc.partner_shipping_id"
+                <div t-if="doc.partner_shipping_id"
+                    t-field="doc.partner_shipping_id"
+                    t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                <div t-else=""
+                    t-field="doc.partner_id"
                     t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
                 <div t-if="doc.shipping_gst_number" class="mt-1">
                     GST Number: <span t-field="doc.shipping_gst_number"/>
