@@ -25,3 +25,14 @@ class SaleOrder(models.Model):
     def _compute_customer_phone(self):
         for order in self:
             order.customer_phone = order.partner_id.phone or order.partner_id.mobile
+
+class SaleOrderLine(models.Model):
+    _inherit = 'sale.order.line'
+
+    manufacturing_date = fields.Date(
+        string="Manufacturing Date"
+    )
+
+    expiry_date = fields.Date(
+        string="Expiry Date"
+    )
