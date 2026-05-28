@@ -8,19 +8,12 @@ class SaleOrder(models.Model):
 
     @api.model
     def _cron_blinkit_b2c_auto_create_invoices(self, limit=100):
-        """Confirm and invoice imported Blinkit B2C orders."""
+        """Confirm and invoice imported B2C orders."""
         orders = self.search([
-            ('marketplace_type', '=', 'blinkit'),
             ('marketplace_invoice_type', '=ilike', 'b2c'),
-            ('state', 'in', ['draft', 'sent', 'sale', 'done']),
+            ('state', '=', 'sale'),
         ], limit=limit)
         return orders._blinkit_b2c_auto_create_invoice()
-
-    def action_confirm(self):
-        result = super().action_confirm()
-        if not self.env.context.get('skip_blinkit_b2c_auto_invoice'):
-            self.filtered(lambda order: order._is_blinkit_b2c_order())._blinkit_b2c_auto_create_invoice()
-        return result
 
     def _prepare_invoice(self):
         invoice_vals = super()._prepare_invoice()
@@ -40,12 +33,12 @@ class SaleOrder(models.Model):
     def _is_blinkit_b2c_order(self):
         self.ensure_one()
         invoice_type = (self.marketplace_invoice_type or '').strip().lower()
-        return bool(self.marketplace_type == 'blinkit' and invoice_type == 'b2c')
+        return invoice_type == 'b2c'
 
     def _blinkit_b2c_confirm_order(self):
         self.ensure_one()
         if self.state in ('draft', 'sent'):
-            self.with_context(skip_blinkit_b2c_auto_invoice=True).action_confirm()
+            self.action_confirm()
         return self.state in ('sale', 'done')
 
     def _blinkit_b2c_validate_deliveries(self):
@@ -73,7 +66,7 @@ class SaleOrder(models.Model):
             picking.with_context(skip_backorder=True, skip_sms=True).button_validate()
             if picking.state != 'done':
                 order_message = _(
-                    "Blinkit B2C invoice was not created because delivery %s needs manual validation.",
+                    "B2C invoice was not created because delivery %s needs manual validation.",
                     picking.display_name,
                 )
                 self.message_post(body=order_message)
@@ -81,7 +74,7 @@ class SaleOrder(models.Model):
         return True
 
     def _blinkit_b2c_auto_create_invoice(self):
-        """Validate delivery, then create and post invoices for Blinkit B2C orders."""
+        """Create and post invoices for Blinkit B2C orders, even if delivery is not validated."""
         invoices = self.env['account.move']
         for order in self:
             if not order._is_blinkit_b2c_order():
@@ -94,15 +87,20 @@ class SaleOrder(models.Model):
             try:
                 if not order._blinkit_b2c_confirm_order():
                     order.message_post(body=_(
-                        "Blinkit B2C invoice was not created because the quotation could not be confirmed."
+                        "B2C invoice was not created because the quotation could not be confirmed."
                     ))
                     continue
-                if not order._blinkit_b2c_validate_deliveries():
-                    continue
+                try:
+                    order._blinkit_b2c_validate_deliveries()
+                except Exception as error:
+                    order.message_post(body=_(
+                        "B2C delivery automatic validation failed, but invoice creation will continue: %s",
+                        error,
+                    ))
                 new_invoices = order._create_invoices()
             except Exception as error:
                 order.message_post(body=_(
-                    "Blinkit B2C delivery/invoice automatic process failed: %s", error
+                    "B2C invoice automatic process failed: %s", error
                 ))
                 continue
 
@@ -115,7 +113,7 @@ class SaleOrder(models.Model):
                     "<a href='#' data-oe-model='account.move' data-oe-id='%s'>%s</a>"
                 ) % (invoice.id, invoice.display_name) for invoice in new_invoices)
                 order.message_post(body=Markup("%s %s") % (
-                    _("Blinkit B2C invoice created and posted automatically:"),
+                    _("B2C invoice created and posted automatically:"),
                     invoice_links,
                 ))
         return invoices
