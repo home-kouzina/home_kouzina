@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_invoice_document_inherit_partner_addresses" inherit_id="account.report_invoice_document">
+        <xpath expr="//div[@name='shipping_address_block']" position="attributes">
+            <attribute name="groups"/>
+        </xpath>
+        <xpath expr="//div[@name='shipping_address_block']/div[@t-field='o.partner_shipping_id']" position="attributes">
+            <attribute name="t-options">{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="attributes">
+            <attribute name="t-options">{"widget": "contact", "fields": ["address", "name"], "no_marker": True}</attribute>
+        </xpath>
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="before">
+            <strong class="d-block mb-1">Buyer Address</strong>
+        </xpath>
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="after">
+            <div t-if="o.partner_id.phone or o.partner_id.mobile">
+                <i class="fa fa-phone me-1"/>
+                <span t-out="o.partner_id.phone or o.partner_id.mobile"/>
+            </div>
+        </xpath>
+        <xpath expr="//t[@t-elif=&quot;o.partner_shipping_id and (o.partner_shipping_id == o.partner_id)&quot;]" position="replace">
+            <t t-elif="o.partner_shipping_id and (o.partner_shipping_id == o.partner_id)">
+                <div t-if="o.move_type in ('out_invoice', 'out_refund', 'out_receipt')" class="col-6">
+                    <t t-set="information_block">
+                        <div name="shipping_address_block_same_as_buyer">
+                            <strong class="d-block mt-3">Shipping Address</strong>
+                            <div t-field="o.partner_shipping_id"
+                                 t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                        </div>
+                    </t>
+                </div>
+                <div t-attf-class="{{ 'col-6' if o.move_type in ('out_invoice', 'out_refund', 'out_receipt') else 'offset-col-6 col-6' }}" name="address_same_as_shipping">
+                    <t t-set="address">
+                        <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                        <div t-if="o.partner_id.phone or o.partner_id.mobile">
+                            <i class="fa fa-phone me-1"/>
+                            <span t-out="o.partner_id.phone or o.partner_id.mobile"/>
+                        </div>
+                        <div t-if="o.partner_id.vat" id="partner_vat_address_same_as_shipping">
+                            <t t-if="o.company_id.account_fiscal_country_id.vat_label" t-out="o.company_id.account_fiscal_country_id.vat_label" id="inv_tax_id_label"/>
+                            <t t-else="">Tax ID</t>: <span t-field="o.partner_id.vat"/>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </xpath>
+        <xpath expr="//div[@class='row']/t[@t-else='']" position="replace">
+            <t t-else="">
+                <div t-if="o.move_type in ('out_invoice', 'out_refund', 'out_receipt')" class="col-6">
+                    <t t-set="information_block">
+                        <div name="shipping_address_block_no_shipping">
+                            <strong class="d-block mt-3">Shipping Address</strong>
+                            <div t-field="o.partner_id"
+                                 t-options='{"widget": "contact", "fields": ["address", "name", "phone"], "no_marker": True, "phone_icons": True}'/>
+                        </div>
+                    </t>
+                </div>
+                <div t-attf-class="{{ 'col-6' if o.move_type in ('out_invoice', 'out_refund', 'out_receipt') else 'offset-col-6 col-6' }}" name="no_shipping">
+                    <t t-set="address">
+                        <address class="mb-0" t-field="o.partner_id" t-options='{"widget": "contact", "fields": ["address", "name"], "no_marker": True}'/>
+                        <div t-if="o.partner_id.phone or o.partner_id.mobile">
+                            <i class="fa fa-phone me-1"/>
+                            <span t-out="o.partner_id.phone or o.partner_id.mobile"/>
+                        </div>
+                        <div t-if="o.partner_id.vat" id="partner_vat_no_shipping">
+                            <t t-if="o.company_id.account_fiscal_country_id.vat_label" t-out="o.company_id.account_fiscal_country_id.vat_label" id="inv_tax_id_label"/>
+                            <t t-else="">Tax ID</t>: <span t-field="o.partner_id.vat"/>
+                        </div>
+                    </t>
+                </div>
+            </t>
+        </xpath>
+    </template>
+</odoo>
