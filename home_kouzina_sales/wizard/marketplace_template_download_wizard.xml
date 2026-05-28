@@ -4,9 +4,6 @@
         <field name="model">marketplace.template.download.wizard</field>
         <field name="arch" type="xml">
             <form string="Download XLSX Template">
-                <group>
-                    <field name="marketplace_id" options="{'no_create': True}"/>
-                </group>
                 <footer>
                     <button string="Download"
                             name="action_download_template"

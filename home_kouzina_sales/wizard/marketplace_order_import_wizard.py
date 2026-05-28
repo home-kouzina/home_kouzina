@@ -60,30 +60,34 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Shipping Amount': 'shipping_amount',
         'Currency': 'currency',
         'Order Tag': 'order_tag',
-        # ---------- Flipkart ----------
-        'Flipkart Order ID': 'flipkart_order_id',
-        'Flipkart Order Date': 'flipkart_order_date',
-        'Flipkart Payment Status': 'flipkart_payment_status',
-        'Flipkart Order Status': 'flipkart_order_status',
-        'Flipkart Total Amount': 'flipkart_total_amount',
-        # ---------- Amazon ----------
-        'Amazon Order ID': 'amazon_order_id',
-        'Amazon Order Date': 'amazon_order_date',
-        'Amazon Payment Status': 'amazon_payment_status',
-        'Amazon Order Status': 'amazon_order_status',
-        'Amazon Total Amount': 'amazon_total_amount',
-        # ---------- Blinkit ----------
-        'Blinkit Order ID': 'blinkit_order_id',
-        'Blinkit Delivery Slot': 'blinkit_delivery_slot',
-        'Blinkit Payment Status': 'blinkit_payment_status',
-        'Blinkit Order Status': 'blinkit_order_status',
-        'Blinkit Total Amount': 'blinkit_total_amount',
-        # ---------- Shopify ----------
-        'Shopify Order ID': 'shopify_order_id',
-        'Shopify Order Date': 'shopify_order_date',
-        'Shopify Payment Status': 'shopify_payment_status',
-        'Shopify Order Status': 'shopify_order_status',
-        'Shopify Total Amount': 'shopify_total_amount',
+        'Order ID': 'marketplace_order_ref',
+        'Marketplace Order Date': 'marketplace_order_date',
+        'Payment Status': 'marketplace_payment_status',
+        'Order Status': 'marketplace_order_status',
+        'Delivery Slot': 'marketplace_delivery_slot',
+        'Total Amount': 'marketplace_total_amount',
+        # Marketplace-specific template headers now map to common sale order fields.
+        'Flipkart Order ID': 'marketplace_order_ref',
+        'Flipkart Order Date': 'marketplace_order_date',
+        'Flipkart Payment Status': 'marketplace_payment_status',
+        'Flipkart Order Status': 'marketplace_order_status',
+        'Flipkart Total Amount': 'marketplace_total_amount',
+        'Amazon Order ID': 'marketplace_order_ref',
+        'Amazon Order Date': 'marketplace_order_date',
+        'Amazon Payment Status': 'marketplace_payment_status',
+        'Amazon Order Status': 'marketplace_order_status',
+        'Amazon Total Amount': 'marketplace_total_amount',
+        'Blinkit Order ID': 'marketplace_order_ref',
+        'Blinkit Order Date': 'marketplace_order_date',
+        'Blinkit Delivery Slot': 'marketplace_delivery_slot',
+        'Blinkit Payment Status': 'marketplace_payment_status',
+        'Blinkit Order Status': 'marketplace_order_status',
+        'Blinkit Total Amount': 'marketplace_total_amount',
+        'Shopify Order ID': 'marketplace_order_ref',
+        'Shopify Order Date': 'marketplace_order_date',
+        'Shopify Payment Status': 'marketplace_payment_status',
+        'Shopify Order Status': 'marketplace_order_status',
+        'Shopify Total Amount': 'marketplace_total_amount',
         #...............INVOICE,,,,,,,,,,
         'Invoice Number': 'marketplace_invoice_number',
         'Invoice Type': 'marketplace_invoice_type',
@@ -459,7 +463,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             marketplace = 'Shopify'
 
         if not marketplace:
-            raise UserError("Cannot detect marketplace from uploaded file. Check headers.")
+            marketplace = self.marketplace_id.name
 
         marketplace_id = self.env['marketplace.master'].search([('name', '=', marketplace)], limit=1)
         if not marketplace_id:
@@ -552,11 +556,24 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         """Return dict: marketplace_order_id -> list of (original_index, rowdict)"""
         groups = {}
         for idx, row in enumerate(parsed_rows, start=1):
-            mid = row.get('marketplace_order_id')
+            mid = str(row.get('marketplace_order_id') or '').strip()
+            row['marketplace_order_id'] = mid
             if mid not in groups:
                 groups[mid] = []
             groups[mid].append((idx, row))
         return groups
+
+    def _find_existing_marketplace_order(self, marketplace_order_id, marketplace_type):
+        marketplace_order_id = str(marketplace_order_id or '').strip()
+        if not marketplace_order_id:
+            return self.env['sale.order']
+
+        origin = f"marketplace:{(self.marketplace_id.name or 'unknown')}|{marketplace_order_id}"
+        return self.env['sale.order'].search([
+            '|',
+            ('origin', '=', origin),
+            ('marketplace_order_ref', '=', marketplace_order_id),
+        ], limit=1)
 
         # ----------------- Per-order processing -----------------
 
@@ -602,9 +619,12 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             return {'success': False, 'failed_rows': [(idx, msg) for idx, _ in rows]}
 
         # c) Check if sale.order already exists
+        marketplace_order_id = str(marketplace_order_id or '').strip()
         origin = f"marketplace:{(self.marketplace_id.name or 'unknown')}|{marketplace_order_id}"
-        marketplace_type = (self.marketplace_id.name or '').lower()
-        existing_order = self.env['sale.order'].search([('origin', '=', origin)], limit=1)
+        marketplace_type = self.marketplace_id.code or self.marketplace_id._normalize_marketplace_code(
+            self.marketplace_id.name
+        )
+        existing_order = self._find_existing_marketplace_order(marketplace_order_id, marketplace_type)
         if existing_order:
             msg = ("Sale order %s already exists") % existing_order.name
             # mark all rows as failed
@@ -624,6 +644,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             # sales team - keep your previous default
             'team_id': self.env.ref('sales_team.salesteam_website_sales').id,
             'marketplace_type': marketplace_type,
+            'marketplace_order_ref': marketplace_order_id,
+            'marketplace_order_date': first_row.get('order_date'),
             # 'marketplace_invoice_number': first_row.get('marketplace_invoice_number'),
             # 'marketplace_invoice_type': first_row.get('marketplace_invoice_type'),
             # 'marketplace_invoice_state': first_row.get('marketplace_sale_state'),
@@ -647,20 +669,10 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 tag = self.env['crm.tag'].create({'name': order_tag_name})
             order_vals.setdefault('tag_ids', []).append((4, tag.id))
 
-        # --- Include marketplace-specific fields if present ---
+        # --- Include common marketplace fields if present ---
         marketplace_fields = [
-            # Flipkart
-            'flipkart_order_id', 'flipkart_order_date', 'flipkart_payment_status', 'flipkart_order_status',
-            'flipkart_total_amount',
-            # Amazon
-            'amazon_order_id', 'amazon_order_date', 'amazon_payment_status', 'amazon_order_status',
-            'amazon_total_amount',
-            # Blinkit
-            'blinkit_order_id', 'blinkit_delivery_slot', 'blinkit_payment_status', 'blinkit_order_status',
-            'blinkit_total_amount',
-            # Shopify
-            'shopify_order_id', 'shopify_order_date', 'shopify_payment_status', 'shopify_order_status',
-            'shopify_total_amount',
+            'marketplace_order_ref', 'marketplace_order_date', 'marketplace_payment_status',
+            'marketplace_order_status', 'marketplace_delivery_slot', 'marketplace_total_amount',
             #invoice
             'marketplace_invoice_number','marketplace_invoice_type','marketplace_sale_state'
         ]
