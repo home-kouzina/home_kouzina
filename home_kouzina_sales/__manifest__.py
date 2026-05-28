@@ -8,7 +8,7 @@
         - Download Template: download a blank Excel template.
         - Upload Template: upload filled Excel and create Sale Orders.
     """,
-    'depends': ['base', 'sale_management','sale','product','marketplace','account'],
+    'depends': ['base', 'sale_management','sale','product','marketplace','account','hk_sale_blinkit_auto_invoice'],
     'data': [
         'security/ir.model.access.csv',
         'views/sale_order_view.xml',
