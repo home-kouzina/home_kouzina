@@ -3,6 +3,9 @@
     <template id="report_purchaseorder_document_inherit_seller_address_label"
               inherit_id="purchase.report_purchaseorder_document"
               priority="30">
+        <xpath expr="//t[@t-call='web.external_layout']" position="inside">
+            <t t-set="company" t-value="env.company.sudo()"/>
+        </xpath>
         <xpath expr="//t[@t-set='address']/div[@t-field='o.partner_id']" position="before">
             <strong class="d-block mb-1">Seller Address</strong>
         </xpath>
@@ -32,6 +35,9 @@
     <template id="report_purchasequotation_document_inherit_seller_address_label"
               inherit_id="purchase.report_purchasequotation_document"
               priority="30">
+        <xpath expr="//t[@t-call='web.external_layout']" position="inside">
+            <t t-set="company" t-value="env.company.sudo()"/>
+        </xpath>
         <xpath expr="//t[@t-set='address']/div[@t-field='o.partner_id']" position="before">
             <strong class="d-block mb-1">Seller Address</strong>
         </xpath>
