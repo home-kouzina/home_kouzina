@@ -6,12 +6,24 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="priority">99</field>
         <field name="arch" type="xml">
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="customer_phone"/>
+            </xpath>
             <xpath expr="//field[@name='partner_shipping_id']" position="after">
                 <field name="shipping_gst_number"/>
             </xpath>
             <xpath expr="//field[@name='partner_invoice_id']" position="attributes">
                 <attribute name="invisible">1</attribute>
             </xpath>
+                       <!-- Order Line Optional Fields -->
+            <xpath expr="//field[@name='order_line']//list//field[@name='price_unit']" position="after">
+
+                <field name="manufacturing_date" optional="hide"/>
+
+                <field name="expiry_date" optional="hide"/>
+
+            </xpath>
+
         </field>
     </record>
 </odoo>

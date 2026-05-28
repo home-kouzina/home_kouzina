@@ -12,12 +12,26 @@
 <!--                       context="{'show_address': 1, 'default_type': 'delivery'}"-->
 <!--                       options="{'no_create': True, 'no_create_edit': True}"/>-->
 <!--            </xpath>-->
+
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="vendor_phone"/>
+            </xpath>
+            <xpath expr="//field[@name='picking_type_id']" position="attributes">
+                <attribute name="domain">[('code', '=', 'incoming')]</attribute>
+<!--                <attribute name="domain">[('code','=','incoming'), '|', ('warehouse_id', '=', False), ('warehouse_id.company_id', 'child_of', company_id)]</attribute>-->
+            </xpath>
             <xpath expr="//field[@name='date_order']" position="attributes">
                 <attribute name="string">Order Date</attribute>
             </xpath>
             <xpath expr="//field[@name='date_planned']" position="attributes">
                 <attribute name="string">Delivery Date</attribute>
             </xpath>
+             <xpath expr="//field[@name='picking_type_id']" position="after">
+                <field name="billing_warehouse_id"
+                       options="{'no_create': True}"
+                       readonly="state in ['cancel', 'done', 'purchase']"/>
+            </xpath>
+
         </field>
     </record>
 </odoo>
