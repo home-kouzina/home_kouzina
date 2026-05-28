@@ -6,13 +6,23 @@ from odoo import fields, models
 class SaleReport(models.Model):
     _inherit = "sale.report"
 
-    marketplace_type = fields.Selection([
-        ('flipkart', 'Flipkart'),
-        ('amazon', 'Amazon'),
-        ('blinkit', 'Blinkit'),
-        ('shopify', 'Shopify'),
-        ('homekozin', 'HomeKouzina'),
-    ], string="Marketplace", readonly=True)
+    def _get_marketplace_type_selection(self):
+        marketplaces = self.env['marketplace.master'].sudo().search([], order='name')
+        selection = []
+        seen_codes = set()
+        for marketplace in marketplaces:
+            code = marketplace.code or marketplace._normalize_marketplace_code(marketplace.name)
+            if not code or code in seen_codes:
+                continue
+            selection.append((code, marketplace.name))
+            seen_codes.add(code)
+        return selection or self.env['marketplace.master']._get_default_marketplace_selection()
+
+    marketplace_type = fields.Selection(
+        selection='_get_marketplace_type_selection',
+        string="Marketplace",
+        readonly=True,
+    )
 
     city = fields.Char(string="City", readonly=True)
 
