@@ -5,6 +5,3 @@ class MarketplaceMaster(models.Model):
 
 
 
-home_kouzina_sales
-hk_sale_blinkit_auto_invoice
-marketplace
