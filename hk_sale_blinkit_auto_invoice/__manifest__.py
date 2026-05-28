@@ -7,6 +7,7 @@
         'marketplace',
         'account',
         'sale_stock',
+        'home_kouzina_sales',
     ],
     'data': [
         'data/ir_cron.xml',
