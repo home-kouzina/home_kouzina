@@ -33,6 +33,22 @@ class SaleOrder(models.Model):
     marketplace_invoice_number = fields.Char(string="Marketplace Invoice Number")
     marketplace_invoice_type = fields.Char(string="Invoice Type")
     marketplace_sale_state = fields.Char(string="Sale State")
+    # marketplace_supply_city = fields.Char(string="Supply City")
+    # marketplace_supply_country = fields.Many2one(
+    #     'res.country',
+    #     string="Supply Country",
+    #     help="Country from where the goods are supplied / dispatched"
+    # )
+    # marketplace_supply_state = fields.Many2one(
+    #     'res.country.state',
+    #     string="Supply State",
+    #     domain="[('country_id', '=', marketplace_supply_country)]",  # Contextual filtering
+    #     help="State from where the goods are supplied / dispatched"
+    # )
+    # marketplace_supply_state_gst = fields.Char(string="Supply State GST")
+    marketplace_hsn_code = fields.Char(string="HSN Code")
+    marketplace_item_id = fields.Char(string="Item ID")
+
 
     @api.model_create_multi
     def create(self, vals_list):

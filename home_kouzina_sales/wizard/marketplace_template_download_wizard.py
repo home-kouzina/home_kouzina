@@ -12,6 +12,6 @@ class MarketplaceTemplateDownloadWizard(models.TransientModel):
         self.ensure_one()
         return {
             'type': 'ir.actions.act_url',
-            'url': '/home_kouzina_sales/static/src/files/marketplace_order_import_template.xlsx',
+            'url': '/home_kouzina_sales/static/src/files/Orders.xlsx',
             'target': 'new',
         }
