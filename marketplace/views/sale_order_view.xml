@@ -36,6 +36,12 @@
                             <field name="marketplace_invoice_number"/>
                             <field name="marketplace_invoice_type"/>
                             <field name="marketplace_sale_state"/>
+<!--                            <field name="marketplace_supply_city"/>-->
+<!--                            <field name="marketplace_supply_country"/>-->
+<!--                            <field name="marketplace_supply_state"/>-->
+<!--                            <field name="marketplace_supply_state_gst"/>-->
+                            <field name="marketplace_hsn_code"/>
+                            <field name="marketplace_item_id"/>
                         </group>
                     </group>
                 </page>
