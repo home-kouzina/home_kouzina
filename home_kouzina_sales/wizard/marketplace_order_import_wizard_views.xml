@@ -6,7 +6,7 @@
             <form string="Import Marketplace Orders">
                 <sheet>
                     <group>
-                        <field name="marketplace_id" options="{'no_create': True, 'no_edit': True, 'no_open': True}"/>
+<!--                        <field name="marketplace_id" options="{'no_create': True, 'no_edit': True, 'no_open': True}"/>-->
                         <field name="xlsx_file" filename="xlsx_filename"/>
                         <field name="xlsx_filename" invisible="1"/>
                         <field name="confirm_orders"/>

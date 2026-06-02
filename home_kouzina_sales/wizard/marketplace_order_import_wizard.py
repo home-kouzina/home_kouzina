@@ -23,7 +23,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
     _description = 'Import Marketplace Orders from XLSX'
     _rec_name = 'marketplace_id'
 
-    marketplace_id = fields.Many2one('marketplace.master', string='Marketplace', required=True)
+    # Optional wizard field; allows multiple mixed marketplaces in a single sheet
+    marketplace_id = fields.Many2one('marketplace.master', string='Marketplace', required=False)
     xlsx_file = fields.Binary(string='Upload XLSX File', required=True)
     xlsx_filename = fields.Char(string='Filename')
     confirm_orders = fields.Boolean(string='Confirm Created Orders', default=False)
@@ -32,17 +33,16 @@ class MarketplaceOrderImportWizard(models.TransientModel):
     report_file = fields.Binary(string='Failed Orders Report')
     report_filename = fields.Char(string='Report Filename')
 
-    # Expected default headers (Updated to match internal keys mapping to customer fields)
     DEFAULT_EXPECTED_HEADERS = [
-        'marketplace_order_id', 'customer_email', 'customer_name',
+        'marketplace_order_id', 'marketplace_type_excel', 'customer_email', 'customer_name',
         'customer_street', 'customer_city', 'customer_zip',
         'order_date', 'product_sku', 'quantity', 'unit_price',
         'order_line_note', 'marketplace_invoice_number',
         'marketplace_invoice_type', 'marketplace_sale_state', 'marketplace_hsn_code'
     ]
 
-    # Map user-friendly Excel headers to internal field names
     HEADER_MAP = {
+        'Marketplace Type': 'marketplace_type_excel',
         'Marketplace Order ID': 'marketplace_order_id',
         'Supply City': 'supply_city',
         'Supply State': 'supply_state',
@@ -55,21 +55,16 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Item ID': 'marketplace_item_id',
         'Customer Email': 'customer_email',
         'Customer Name': 'customer_name',
-
-        # --- CHANGED HEADERS PER CLIENT REQUEST ---
         'Customer Street': 'customer_street',
         'Customer City': 'customer_city',
         'Customer State': 'customer_state',
         'Customer Zip': 'customer_zip',
         'Customer Country': 'customer_country',
-        # Keep old fallbacks just in case older sheets are uploaded
         'Billing Street': 'customer_street',
         'Billing City': 'customer_city',
         'Billing State': 'customer_state',
         'Billing Zip': 'customer_zip',
         'Billing Country': 'customer_country',
-        # ------------------------------------------
-
         'Order Date': 'order_date',
         'Product SKU': 'product_sku',
         'Product Name': 'product_name',
@@ -119,13 +114,20 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             self.report_file = False
             self.report_filename = False
 
-    # -------------------------------------------------------------
-    # MAIN VALIDATOR ENTRY
-    # -------------------------------------------------------------
     def _validate_row(self, row, index):
-        """ Validate a single order line (row) from import data. """
         errors = []
         try:
+            # Validate marketplace configuration presence for this specific row
+            m_type = str(row.get('marketplace_type_excel') or '').strip()
+            if not m_type:
+                errors.append('Missing Marketplace Type')
+            else:
+                m_rec = self.env['marketplace.master'].search([
+                    '|', ('name', '=ilike', m_type), ('code', '=ilike', m_type)
+                ], limit=1)
+                if not m_rec:
+                    errors.append(f"Marketplace '{m_type}' not found in system configurations")
+
             errors += self._validate_basic_fields(row)
             errors += self._validate_customer_fields(row)
             errors += self._validate_address_fields(row)
@@ -135,16 +137,11 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             errors += self._validate_csv_injection(row)
         except Exception as e:
             errors.append(f"Unexpected error in row {index}: {str(e)}")
-
         return '; '.join(filter(None, errors))
 
-    # -------------------------------------------------------------
-    # SUB-VALIDATION BLOCKS
-    # -------------------------------------------------------------
     def _validate_basic_fields(self, row):
         errors = []
-        marketplace_order_id = row.get('marketplace_order_id')
-        if not marketplace_order_id:
+        if not row.get('marketplace_order_id'):
             errors.append('Missing marketplace_order_id')
 
         order_date = row.get('order_date')
@@ -164,10 +161,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
     def _validate_customer_fields(self, row):
         errors = []
-        customer_name = row.get('customer_name')
-        if not customer_name:
+        if not row.get('customer_name'):
             errors.append('Missing customer_name')
-
         customer_email = row.get('customer_email')
         if not customer_email:
             errors.append('Missing customer_email')
@@ -177,11 +172,9 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
     def _validate_address_fields(self, row):
         errors = []
-        # Updated tracking to look for internal customer_ address keys instead of billing_
         for field in ['customer_street', 'customer_city', 'customer_state']:
             if not row.get(field):
                 errors.append(f"Missing {field}")
-
         customer_zip = row.get('customer_zip')
         if not customer_zip:
             errors.append('Missing customer_zip')
@@ -238,12 +231,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 errors.append(f"Incorrect injection in field '{key}'")
         return errors
 
-    # -------------------------------------------------------------
-    # HIGH-LEVEL ORCHESTRATOR
-    # -------------------------------------------------------------
     def action_import_orders(self):
         self.ensure_one()
-
         try:
             headers, data_rows = self._read_xlsx()
         except Exception as e:
@@ -256,7 +245,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         if self.log_ids:
             self.log_ids.unlink()
 
-        # Safely treat columns dynamically
         headers_list = list(headers)
         if 'Status' not in headers_list:
             headers_list.append('Status')
@@ -266,7 +254,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         parsed_rows = []
         has_error = False
 
-        # Run complete functional block validation
         for idx, raw in enumerate(data_rows, start=1):
             row = {k: (v if v is not None else '') for k, v in raw.items()}
             row_error = self._validate_row(row, idx)
@@ -292,10 +279,12 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         created_orders = []
         failed_rows = []
 
-        for marketplace_order_id, group in grouped.items():
+        # Process each group using its dedicated row-level marketplace record context
+        for key_tuple, group in grouped.items():
+            marketplace_order_id, marketplace_record = key_tuple
             try:
                 with self.env.cr.savepoint():
-                    order_result = self._process_order_group(marketplace_order_id, group)
+                    order_result = self._process_order_group(marketplace_order_id, marketplace_record, group)
                     if order_result.get('success'):
                         created_orders.append(order_result.get('order'))
                     else:
@@ -319,12 +308,10 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         return {
             'type': 'ir.actions.client',
             'tag': 'reload',
-            'params': {'message': f"Marketplace orders imported successfully! Created {len(created_orders)} orders."}
+            'params': {
+                'message': f"Successfully imported mixed marketplace entries! Created {len(created_orders)} orders."}
         }
 
-    # -------------------------------------------------------------
-    # PARSING & UTILITIES
-    # -------------------------------------------------------------
     def _read_xlsx(self):
         if not self.xlsx_file:
             raise UserError("Please upload an XLSX file.")
@@ -339,39 +326,14 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             raise UserError("XLSX file is empty or invalid.")
 
         raw_headers = [str(h).strip() for h in rows[0] if h is not None]
-
-        marketplace = None
-        if any(h.startswith('Flipkart') for h in raw_headers):
-            marketplace = 'Flipkart'
-        elif any(h.startswith('Amazon') for h in raw_headers):
-            marketplace = 'Amazon'
-        elif any(h.startswith('Blinkit') for h in raw_headers):
-            marketplace = 'Blinkit'
-        elif any(h.startswith('Shopify') for h in raw_headers):
-            marketplace = 'Shopify'
-
-        if not marketplace:
-            marketplace = self.marketplace_id.name
-
-        marketplace_id = self.env['marketplace.master'].search([('name', '=', marketplace)], limit=1)
-        if not marketplace_id:
-            raise UserError(f"Marketplace '{marketplace}' not found in system.")
-
-        if self.marketplace_id.name.strip().lower() != marketplace.strip().lower():
-            raise UserError(
-                f"Uploaded file belongs to '{marketplace}' marketplace, "
-                f"but you selected '{self.marketplace_id.name}'."
-            )
-
         headers = [self.HEADER_MAP.get(h, h.strip()) for h in raw_headers]
 
         data_rows = []
         for r in rows[1:]:
             if not any(cell is not None for cell in r):
-                continue  # Skip completely blank lines safely
+                continue
             row_dict = dict(zip(headers, r))
             row_dict = {k: (v.strip() if isinstance(v, str) else v) for k, v in row_dict.items() if k}
-            row_dict['marketplace_name'] = marketplace
             data_rows.append(row_dict)
 
         return headers, data_rows
@@ -380,27 +342,35 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         lower_headers = [str(h).lower() for h in headers]
         return [h for h in expected if h.lower() not in lower_headers]
 
+    # --- CHANGED: Group by BOTH Order ID and Row Marketplace Record ---
     def _group_rows_by_order(self, parsed_rows):
         groups = {}
         for idx, row in enumerate(parsed_rows, start=1):
             mid = str(row.get('marketplace_order_id') or '').strip()
-            if mid not in groups:
-                groups[mid] = []
-            groups[mid].append((idx, row))
+            m_type = str(row.get('marketplace_type_excel') or '').strip()
+
+            # Dynamically look up the unique marketplace record for this row
+            m_record = self.env['marketplace.master'].search([
+                '|', ('name', '=ilike', m_type), ('code', '=ilike', m_type)
+            ], limit=1)
+
+            # Use tuple key: (Order_ID, Marketplace_Record)
+            key = (mid, m_record)
+            if key not in groups:
+                groups[key] = []
+            groups[key].append((idx, row))
         return groups
 
-    def _find_existing_marketplace_order(self, marketplace_order_id, marketplace_type):
-        if not marketplace_order_id:
+    def _find_existing_marketplace_order(self, marketplace_order_id, marketplace_record):
+        if not marketplace_order_id or not marketplace_record:
             return self.env['sale.order']
-        origin = f"marketplace:{self.marketplace_id.name}|{marketplace_order_id}"
+        origin = f"marketplace:{marketplace_record.name}|{marketplace_order_id}"
         return self.env['sale.order'].search([
             '|', ('origin', '=', origin), ('marketplace_order_ref', '=', marketplace_order_id)
         ], limit=1)
 
-    # -------------------------------------------------------------
-    # ORDER RECORD CREATION
-    # -------------------------------------------------------------
-    def _process_order_group(self, marketplace_order_id, rows):
+    # --- CHANGED: Explicitly receives individual row-level marketplace context record ---
+    def _process_order_group(self, marketplace_order_id, marketplace_record, rows):
         failed_rows = []
         first_row = rows[0][1]
 
@@ -411,16 +381,16 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 self._log_failure(idx, msg)
             return {'success': False, 'failed_rows': [(idx, msg) for idx, _ in rows]}
 
-        marketplace_type = self.marketplace_id.code or 'unknown'
-        existing_order = self._find_existing_marketplace_order(marketplace_order_id, marketplace_type)
+        marketplace_type = marketplace_record.code or 'unknown'
+        existing_order = self._find_existing_marketplace_order(marketplace_order_id, marketplace_record)
         if existing_order:
-            msg = f"Sale order {existing_order.name} already exists."
+            msg = f"Sale order {existing_order.name} already exists for {marketplace_record.name}."
             for idx, _ in rows:
                 self._log_failure(idx, msg)
             return {'success': False, 'failed_rows': [(idx, msg) for idx, _ in rows]}
 
-        origin = f"marketplace:{self.marketplace_id.name}|{marketplace_order_id}"
-        warehouse = getattr(self.marketplace_id, 'warehouse_map', self.env.ref('stock.warehouse0'))
+        origin = f"marketplace:{marketplace_record.name}|{marketplace_order_id}"
+        warehouse = getattr(marketplace_record, 'warehouse_map', self.env.ref('stock.warehouse0'))
 
         order_vals = {
             'partner_id': customer.id,
@@ -432,15 +402,13 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             'marketplace_order_ref': marketplace_order_id,
         }
 
-        # Context evaluation for properties
         payment_term_name = first_row.get('payment_term_name')
         if payment_term_name:
             term = self.env['account.payment.term'].search([('name', '=ilike', payment_term_name.strip())], limit=1)
             if term:
                 order_vals['payment_term_id'] = term.id
 
-        # Mapping tags safely
-        order_tag_name = str(first_row.get('order_tag') or '').strip() or self.marketplace_id.name
+        order_tag_name = str(first_row.get('order_tag') or '').strip() or marketplace_record.name
         if order_tag_name:
             tag = self.env['crm.tag'].search([('name', '=', order_tag_name)], limit=1)
             if not tag:
@@ -470,16 +438,11 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 failed_rows.append((idx, msg))
                 continue
 
-            # --- DYNAMIC HSN CODE ASSIGNMENT ---
             row_hsn = str(row.get('marketplace_hsn_code') or '').strip()
             if row_hsn:
-                # Odoo standard Indian Localization uses 'l10n_in_hsn_code' on the product template.
-                # Adjust 'l10n_in_hsn_code' below if your system uses a different field technical name.
                 hsn_field = 'l10n_in_hsn_code'
-
                 if hasattr(product, hsn_field) and not product[hsn_field]:
                     product.product_tmpl_id.write({hsn_field: row_hsn})
-            # ------------------------------------
 
             qty = float(row.get('quantity') or 1.0)
             unit_price = float(row.get('unit_price')) if row.get('unit_price') not in (None, '') else product.lst_price
@@ -520,14 +483,12 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         return {'success': True, 'order': sale_order, 'failed_rows': failed_rows}
 
     def _resolve_country(self, row):
-        # Updated to check customer_country explicitly
         country_raw = row.get('customer_country') or 'India'
         country_str = str(country_raw).strip()
         return self.env['res.country'].search(['|', ('code', '=ilike', country_str), ('name', '=ilike', country_str)],
                                               limit=1)
 
     def _resolve_state(self, row, country_id):
-        # Updated to check customer_state explicitly
         state_raw = row.get('customer_state') or row.get('supply_state')
         if not state_raw or not country_id:
             return self.env['res.country.state']
@@ -550,7 +511,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             country_record = self._resolve_country(first_row)
             state_record = self._resolve_state(first_row, country_record)
 
-            # Updated field extraction values to use customer_ keys
             partner_vals = {
                 'name': name or email or 'Unknown Customer',
                 'email': email or False,
@@ -572,9 +532,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             'message': str(message),
         })
 
-    # -------------------------------------------------------------
-    # EXCEL GENERATION REPORTING
-    # -------------------------------------------------------------
     def _generate_report_file(self, headers, rows, created_orders=None):
         created_orders = created_orders or []
         output = io.BytesIO()
