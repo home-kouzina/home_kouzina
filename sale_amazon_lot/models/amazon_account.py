@@ -11,6 +11,7 @@ class AmazonAccount(models.Model):
     _inherit = 'amazon.account'
 
     def _generate_stock_moves(self, order):
+        
         customers_location = self.env.ref('stock.stock_location_customers')
         StockMove = self.env['stock.move']
         generated_moves = StockMove
@@ -35,18 +36,14 @@ class AmazonAccount(models.Model):
             else:
                 stock_move._set_quantity_done(order_line.product_uom_qty)
 
-            stock_move.picked = True  # Also marks move lines as picked in Odoo's stock flow.
+            stock_move.picked = True
             stock_move._action_done()
             generated_moves |= stock_move
 
         return generated_moves
 
     def _amazon_lot_set_quantity_done(self, stock_move, quantity):
-        """Create done move lines with lots selected FIFO from the Amazon location.
-
-        If available quantity is not enough, the remaining quantity is assigned to the
-        last selected lot.
-        """
+        """Create done move lines with lots selected FIFO from the Amazon location."""
         self.ensure_one()
 
         product = stock_move.product_id
@@ -82,18 +79,17 @@ class AmazonAccount(models.Model):
         quants = StockQuant.search(quant_domain, order='in_date asc, id asc')
 
         if not quants:
-            raise UserError(_(
-                "No lot was found in Amazon stock location '%(location)s' for product %(product)s.\n"
-                "Please add/adjust lot stock in the Amazon location and retry the Amazon order sync/recovery.",
-                location=self.location_id.display_name,
-                product=product.display_name,
-            ))
+            fallback_lot = self._amazon_lot_get_or_create_fallback_lot(product)
+            return [{
+                'lot': fallback_lot,
+                'location': self.location_id,
+                'quantity': required_qty,
+            }]
 
         remaining_qty = required_qty
         allocations = []
         last_selected_quant = False
 
-        # First consume positive quantities FIFO.
         for quant in quants:
             if float_compare(remaining_qty, 0.0, precision_rounding=rounding) <= 0:
                 break
@@ -119,8 +115,34 @@ class AmazonAccount(models.Model):
 
         return self._amazon_lot_merge_allocations(allocations, rounding)
 
+    def _amazon_lot_get_or_create_fallback_lot(self, product):
+        
+        self.ensure_one()
+
+        StockLot = self.env['stock.lot']
+        lot_name = self._amazon_lot_get_fallback_lot_name(product)
+        company = self.company_id or self.env.company
+
+        lot_domain = [
+            ('name', '=', lot_name),
+            ('product_id', '=', product.id),
+            '|', ('company_id', '=', False), ('company_id', '=', company.id),
+        ]
+        lot = StockLot.search(lot_domain, limit=1)
+        if lot:
+            return lot
+
+        return StockLot.create({
+            'name': lot_name,
+            'product_id': product.id,
+            'company_id': company.id,
+        })
+
+    def _amazon_lot_get_fallback_lot_name(self, product):
+        product_name = product.with_context(display_default_code=False).display_name or product.name
+        return 'AMZ-%s' % product_name.strip()
+
     def _amazon_lot_merge_allocations(self, allocations, rounding):
-        """Merge allocations for the same lot/location pair."""
         merged = OrderedDict()
         for allocation in allocations:
             key = (allocation['lot'].id, allocation['location'].id)
@@ -135,7 +157,6 @@ class AmazonAccount(models.Model):
         ]
 
     def _amazon_lot_create_move_lines(self, stock_move, lot_lines):
-        
         StockMoveLine = self.env['stock.move.line']
         line_fields = StockMoveLine._fields
 
