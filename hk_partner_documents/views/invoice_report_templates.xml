@@ -10,9 +10,12 @@
         <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="attributes">
             <attribute name="t-options">{"widget": "contact", "fields": ["address", "name"], "no_marker": True}</attribute>
         </xpath>
-        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="before">
+        <!-- <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="before">
             <strong class="d-block mb-1">Buyer Address</strong>
-        </xpath>
+        </xpath> -->
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="before">
+    <strong class="d-block mb-1">Billing Address</strong>
+</xpath>
         <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']" position="after">
             <div t-if="o.partner_id.phone or o.partner_id.mobile">
                 <i class="fa fa-phone me-1"/>
