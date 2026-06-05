@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view" model="ir.ui.view">
+        <field name="name">mrp.production.form</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <field name="show_auto_assign_finished_lot" invisible="1"/>
+                <button name="action_auto_assign_finished_lot"
+                        type="object"
+                        string="Assign Finished Lot"
+                        class="btn-secondary"
+                        invisible="not show_auto_assign_finished_lot"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
