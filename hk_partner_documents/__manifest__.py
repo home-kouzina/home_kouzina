@@ -18,9 +18,15 @@
         "views/res_partner_views.xml",
         "views/sale_order_views.xml",
         "views/sale_report_templates.xml",
-        "views/invoice_report_templates.xml",
+        # "views/invoice_report_templates.xml",
+         "views/new_invoice.xml",
+
+        "views/purchase_order_views.xml",
+
         "views/purchase_order_views.xml",
         "views/purchase_report_templates.xml",
+        "views/account_invoice_view.xml",
+        "views/account_invoice_report.xml",
     ],
     "installable": True,
     "application": False,
