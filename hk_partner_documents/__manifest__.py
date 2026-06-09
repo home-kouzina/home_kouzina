@@ -25,6 +25,8 @@
 
         "views/purchase_order_views.xml",
         "views/purchase_report_templates.xml",
+        "views/account_invoice_view.xml",
+        "views/account_invoice_report.xml",
     ],
     "installable": True,
     "application": False,
