@@ -24,6 +24,11 @@
             </attribute>
         </xpath>
 
+        <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']"
+            position="before">
+            <strong class="d-block mb-1">Billing Address</strong>
+        </xpath>
+
         <!-- Add phone below billing address -->
         <xpath expr="//t[@t-set='address']/address[@t-field='o.partner_id']"
                position="after">
