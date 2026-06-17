@@ -24,6 +24,8 @@ class ProductProduct(models.Model):
         help="Cost of goods before the product is sold."
     )
 
+    default_code = fields.Char(string='SKU')
+
     @api.depends(
         'standard_price',
         'labelled_product.standard_price',

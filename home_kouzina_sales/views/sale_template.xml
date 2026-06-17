@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="report_saleorder_document_inherit_lots" inherit_id="sale.report_saleorder_document">
+
+        <xpath expr="//table[hasclass('o_main_table')]/thead/tr/th[@name='th_description']" position="after">
+            <t t-if="doc.print_lot_no">
+                <th name="th_lots" class="text-start">Lots/Serials</th>
+            </t>
+        </xpath>
+
+        <xpath expr="//table[hasclass('o_main_table')]/tbody//td[@name='td_name']" position="after">
+            <t t-if="doc.print_lot_no">
+                <td name="td_lots" class="text-start">
+                    <t t-set="lots" t-value="doc._get_line_lots_and_serials(line)"/>
+                    <t t-if="lots">
+                        <div t-foreach="lots" t-as="lot">
+                            <span t-out="lot"/>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <span class="text-muted">-</span>
+                    </t>
+                </td>
+            </t>
+        </xpath>
+
+    </template>
+
+    <template id="report_invoice_document_inherit_lots" inherit_id="account.report_invoice_document">
+
+        <xpath expr="//table[hasclass('o_main_table')]/thead/tr/th[@name='th_description']" position="after">
+            <t t-if="any(order.print_lot_no for order in o.invoice_line_ids.sale_line_ids.order_id)">
+                <th name="th_lots" class="text-start">Lots/Serials</th>
+            </t>
+        </xpath>
+
+        <xpath expr="//table[hasclass('o_main_table')]/tbody//td[@name='account_invoice_line_name']" position="after">
+            <t t-if="any(order.print_lot_no for order in o.invoice_line_ids.sale_line_ids.order_id)">
+                <td name="td_lots" class="text-start">
+                    <t t-set="lots" t-value="o._get_invoice_line_lots(line)"/>
+                    <t t-if="lots">
+                        <div t-foreach="lots" t-as="lot">
+                            <span t-out="lot"/>
+                        </div>
+                    </t>
+                    <t t-else="">
+                        <span class="text-muted">-</span>
+                    </t>
+                </td>
+            </t>
+        </xpath>
+
+    </template>
+
+</odoo>

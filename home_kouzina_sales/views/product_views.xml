@@ -21,6 +21,9 @@
                     invisible="type not in ['consu']"
                     class="btn-primary"/>
             </xpath>
+            <xpath expr="//field[@name='default_code']" position="attributes">
+                <attribute name="string">SKU</attribute>
+            </xpath>
         </field>
     </record>
 
@@ -31,6 +34,9 @@
         <field name="arch" type="xml">
             <xpath expr="//field[@name='name']" position="after">
                 <field name="regional_language_name"/>
+            </xpath>
+            <xpath expr="//field[@name='default_code']" position="attributes">
+                <attribute name="string">SKU</attribute>
             </xpath>
         </field>
     </record>

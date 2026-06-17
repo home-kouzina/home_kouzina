@@ -16,6 +16,7 @@
         'views/product_packages_views.xml',
         'views/sale_order_line_views.xml',
         'views/stock_picking.xml',
+        'views/sale_template.xml',
         'views/marketplace_master_views.xml',
         'views/purchase_order.xml',
         'views/account_payment_view.xml',
