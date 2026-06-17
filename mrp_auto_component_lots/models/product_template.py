@@ -63,7 +63,8 @@ class ProductProduct(models.Model):
         return prefix or 'LT'
 
     def _get_auto_lot_date_token(self):
-        return fields.Date.context_today(self).strftime('%d%m%y')
+        today = fields.Date.context_today(self)
+        return today.strftime('%y%j')
 
     def _get_next_auto_lot_name(self, company, used_names=None):
         self.ensure_one()
