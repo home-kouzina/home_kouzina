@@ -1,0 +1,174 @@
+.o_hk_purchase_report_list {
+
+    // ── Header row ──────────────────────────────────────────────
+    .o_list_table > thead {
+        > tr {
+            background: linear-gradient(180deg, #3c4858 0%, #2c3441 100%);
+
+            > th {
+                color: #fff;
+                font-weight: 600;
+                font-size: 0.82rem;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+                padding-top: 0.65rem;
+                padding-bottom: 0.65rem;
+                border-bottom: none;
+
+                // show the full field label instead of truncating it
+                white-space: normal;
+                overflow: visible;
+                text-overflow: unset;
+                word-break: break-word;
+                vertical-align: middle;
+
+                .o_column_sortable:hover,
+                &.o_column_sortable:hover {
+                    color: #fff;
+                    cursor: pointer;
+                }
+
+                .fa, i {
+                    color: rgba(255, 255, 255, 0.85);
+                }
+            }
+
+            // ── optional-columns (gear) toggle: force visible on dark header ──
+            th:last-child,
+            th.o_list_actions_header {
+                visibility: visible !important;
+                display: table-cell !important;
+                position: relative !important;
+                width: auto !important;
+                // core list_renderer.scss paints this th with the light
+                // webclient bg color, hiding the white icon on top of it
+                background-color: transparent !important;
+                background: transparent !important;
+            }
+
+            th:last-child a,
+            th:last-child button,
+            th:last-child .dropdown-toggle,
+            .o_optional_columns_dropdown_toggle,
+            .o_optional_columns_dropdown_toggle a,
+            .o_optional_columns_dropdown_toggle button {
+                visibility: visible !important;
+                display: block !important;
+                opacity: 1 !important;
+                color: #fff !important;
+                fill: #fff !important;
+
+                .fa, i {
+                    visibility: visible !important;
+                    display: inline !important;
+                    color: #fff !important;
+                    fill: #fff !important;
+                    opacity: 1 !important;
+                    font-size: 1rem;
+                }
+
+                &:hover {
+                    color: #fff !important;
+                    fill: #fff !important;
+                }
+            }
+        }
+    }
+
+    // ── Body rows ───────────────────────────────────────────────
+    .o_list_table > tbody {
+        > tr.o_data_row {
+            transition: background-color 0.12s ease-in;
+
+            > td {
+                padding-top: 0.45rem;
+                padding-bottom: 0.45rem;
+                font-size: 0.86rem;
+                vertical-align: middle;
+            }
+
+            // zebra striping
+            &:nth-of-type(even) {
+                background-color: #f7f8fa;
+            }
+
+            // hover highlight
+            &:hover {
+                background-color: #eef3fb !important;
+            }
+
+            // ── decoration → soft row tint + bold weight ──
+            &.text-danger {
+                background-color: #fdecec !important;
+                td { color: #c23b3b; font-weight: 500; }
+            }
+            &.text-muted {
+                background-color: #f4f4f5 !important;
+                td { color: #8a8d91; }
+            }
+            &.text-success {
+                background-color: #eaf7ee !important;
+                td { color: #2f7d42; font-weight: 500; }
+            }
+            &.text-info {
+                background-color: #eaf3fb !important;
+                td { color: #2d6fa3; font-weight: 500; }
+            }
+        }
+
+        // ── group-by header rows ──
+        > tr.o_group_header {
+            background-color: #e8ebf0;
+            font-weight: 600;
+
+            > td {
+                padding-top: 0.5rem;
+                padding-bottom: 0.5rem;
+                border-top: 1px solid #d6dae1;
+                border-bottom: 1px solid #d6dae1;
+            }
+
+            .o_group_name {
+                font-size: 0.9rem;
+                color: #2c3441;
+            }
+        }
+    }
+
+    // ── Aggregate / totals footer row ──────────────────────────
+    .o_list_table > tfoot > tr {
+        background-color: #f1f3f6;
+        font-weight: 700;
+
+        > td {
+            border-top: 2px solid #d6dae1;
+            padding-top: 0.55rem;
+            padding-bottom: 0.55rem;
+            color: #2c3441;
+        }
+    }
+
+    // ── Numeric / monetary columns: right align + tabular figures ──
+    .o_list_table td.o_list_number,
+    .o_list_table th.o_list_number {
+        font-variant-numeric: tabular-nums;
+    }
+
+    // ── Badge widgets (status fields) ──────────────────────────
+    .o_field_badge {
+        .badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.32em 0.65em;
+            border-radius: 0.5rem;
+            letter-spacing: 0.01em;
+        }
+    }
+
+    // ── Sticky header on scroll ─────────────────────────────────
+    .o_list_table > thead > tr > th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+}
