@@ -24,6 +24,9 @@
             <xpath expr="//field[@name='default_code']" position="attributes">
                 <attribute name="string">SKU</attribute>
             </xpath>
+            <xpath expr="//field[@name='barcode']" position="attributes">
+                <attribute name="string">EAN</attribute>
+            </xpath>
         </field>
     </record>
 
@@ -37,6 +40,9 @@
             </xpath>
             <xpath expr="//field[@name='default_code']" position="attributes">
                 <attribute name="string">SKU</attribute>
+            </xpath>
+            <xpath expr="//field[@name='barcode']" position="attributes">
+                <attribute name="string">EAN</attribute>
             </xpath>
         </field>
     </record>

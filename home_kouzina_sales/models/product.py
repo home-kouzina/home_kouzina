@@ -25,6 +25,7 @@ class ProductProduct(models.Model):
     )
 
     default_code = fields.Char(string='SKU')
+    barcode = fields.Char(string='EAN')
 
     @api.depends(
         'standard_price',
