@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+    <t t-name="hk_purchase_report.LotPillsField">
+        <div class="o_field_lot_pills d-inline-flex flex-wrap gap-1">
+            <TagsList tags="tags"/>
+        </div>
+    </t>
+
+</templates>

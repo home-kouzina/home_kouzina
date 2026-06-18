@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         LIST VIEW
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_hk_purchase_report_list" model="ir.ui.view">
+        <field name="name">hk.purchase.report.list</field>
+        <field name="model">hk.purchase.report</field>
+        <field name="arch" type="xml">
+            <list string="Purchase Report"
+                  class="o_hk_purchase_report_list"
+                  create="false" edit="false" delete="false"
+                  decoration-danger="state == 'cancel'"
+                  decoration-muted="state == 'draft'"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'sent'">
+
+                <!-- ── Order Info ── -->
+                <field name="order_name" string="Order Ref" optional="show"/>
+                <field name="date_order" string="Order Date" optional="hide"/>
+
+                <!-- ── Product ── -->
+                <field name="product_id" string="Product" optional="show"/>
+                <field name="sku" string="SKU" optional="show"/>
+                <field name="lot_numbers" string="Lot/Serial No" widget="lot_pills" optional="hide"/>
+                <field name="categ_id" string="Category" optional="hide"/>
+                <field name="product_uom" string="UoM" optional="hide"/>
+
+                <!-- ── Vendor ── -->
+                <field name="partner_id" string="Vendor" optional="show"/>
+                <field name="user_id" string="Purchase Rep" optional="hide"/>
+
+                <!-- ── Quantities ── -->
+                <field name="product_qty" string="Ordered Qty"
+                       sum="Total Ordered" optional="hide"/>
+                <field name="qty_received" string="Received Qty"
+                       sum="Total Received" optional="hide"/>
+                <field name="qty_to_receive" string="Qty to Receive"
+                       sum="Qty to Receive" optional="hide"/>
+                <field name="qty_invoiced" string="Billed Qty"
+                       sum="Total Billed" optional="hide"/>
+                <field name="qty_to_invoice" string="Qty to Bill"
+                       sum="Qty to Bill" optional="hide"/>
+
+                <!-- ── Prices ── -->
+                <field name="price_unit" string="Unit Price" optional="hide"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="price_subtotal" string="Subtotal"
+                       widget="monetary" sum="Total Subtotal" optional="hide"/>
+                <field name="price_tax" string="Taxes"
+                       widget="monetary" sum="Total Tax" optional="hide"/>
+                <field name="price_total" string="Total"
+                       widget="monetary" sum="Grand Total" optional="hide"/>
+
+                <!-- ── Dates ── -->
+                <field name="date_approve" string="Confirmed On" optional="hide"/>
+                <field name="date_planned" string="Scheduled Date" optional="hide"/>
+
+                <!-- ── Status ── -->
+                <field name="state" string="Status"
+                       decoration-danger="state == 'cancel'"
+                       decoration-success="state == 'done'"
+                       decoration-warning="state in ('draft','sent')"
+                       widget="badge" optional="hide"/>
+                <field name="receipt_status" string="Receipt Status"
+                       decoration-success="receipt_status == 'received'"
+                       decoration-warning="receipt_status == 'to receive'"
+                       widget="badge" optional="hide"/>
+                <field name="invoice_status" string="Billing Status"
+                       decoration-success="invoice_status == 'invoiced'"
+                       decoration-warning="invoice_status == 'to invoice'"
+                       widget="badge" optional="hide"/>
+
+                <!-- ── Company ── -->
+                <field name="company_id" string="Company" optional="hide" groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         SEARCH VIEW  (Filters + Group By)
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="view_hk_purchase_report_search" model="ir.ui.view">
+        <field name="name">hk.purchase.report.search</field>
+        <field name="model">hk.purchase.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Purchase Report">
+
+                <!-- ── Quick-search fields ── -->
+                <field name="order_name"   string="Order Reference"/>
+                <field name="product_id"   string="Product"/>
+                <field name="sku"          string="SKU / Internal Ref"/>
+                <field name="partner_id"   string="Vendor"/>
+                <field name="user_id"      string="Purchase Representative"/>
+                <field name="categ_id"     string="Product Category"/>
+                <field name="company_id"   string="Company" groups="base.group_multi_company"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     STATUS FILTERS
+                ══════════════════════════════ -->
+                <filter name="filter_draft"
+                        string="RFQ"
+                        domain="[('state','=','draft')]"/>
+                <filter name="filter_sent"
+                        string="RFQ Sent"
+                        domain="[('state','=','sent')]"/>
+                <filter name="filter_to_approve"
+                        string="To Approve"
+                        domain="[('state','=','to approve')]"/>
+                <filter name="filter_purchase"
+                        string="Purchase Orders"
+                        domain="[('state','=','purchase')]"/>
+                <filter name="filter_done"
+                        string="Locked"
+                        domain="[('state','=','done')]"/>
+                <filter name="filter_cancel"
+                        string="Cancelled"
+                        domain="[('state','=','cancel')]"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     RECEIPT STATUS FILTERS
+                ══════════════════════════════ -->
+                <filter name="filter_to_receive"
+                        string="Waiting Receipts"
+                        domain="[('receipt_status','=','to receive')]"/>
+                <filter name="filter_received"
+                        string="Fully Received"
+                        domain="[('receipt_status','=','received')]"/>
+                <filter name="filter_nothing_to_receive"
+                        string="Nothing to Receive"
+                        domain="[('receipt_status','=','nothing')]"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     BILLING STATUS FILTERS
+                ══════════════════════════════ -->
+                <filter name="filter_to_invoice"
+                        string="Waiting Bills"
+                        domain="[('invoice_status','=','to invoice')]"/>
+                <filter name="filter_invoiced"
+                        string="Fully Billed"
+                        domain="[('invoice_status','=','invoiced')]"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     DATE FILTERS — Order Date
+                     (uses strftime only — safe in Odoo 18 JS evaluator)
+                ══════════════════════════════ -->
+                <filter name="filter_today"
+                        string="Today"
+                        domain="[('date_order','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter name="filter_this_month"
+                        string="This Month"
+                        domain="[('date_order','&gt;=', context_today().strftime('%Y-%m-01 00:00:00')),
+                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                <filter name="filter_this_year"
+                        string="This Year"
+                        domain="[('date_order','&gt;=', context_today().strftime('%Y-01-01 00:00:00')),
+                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     DATE FILTERS — Scheduled Date
+                ══════════════════════════════ -->
+                <filter name="filter_overdue"
+                        string="Overdue (Scheduled)"
+                        domain="[('date_planned','&lt;', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                 ('receipt_status','=','to receive')]"/>
+                <filter name="filter_due_today_scheduled"
+                        string="Due Today (Scheduled)"
+                        domain="[('date_planned','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                 ('date_planned','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     PERIOD PICKERS (built-in Odoo 18 date widget —
+                     covers Day / Week / Month / Quarter / Year)
+                ══════════════════════════════ -->
+                <filter name="filter_date_order" string="Order Date" date="date_order"/>
+                <filter name="filter_date_approve" string="Confirmation Date" date="date_approve"/>
+                <filter name="filter_date_planned" string="Scheduled Date" date="date_planned"/>
+
+                <separator/>
+
+                <!-- ══════════════════════════════
+                     GROUP BY
+                ══════════════════════════════ -->
+                <group expand="1" string="Group By">
+                    <filter name="groupby_order"
+                            string="Order Reference"
+                            context="{'group_by': 'order_id'}"/>
+                    <filter name="groupby_vendor"
+                            string="Vendor"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter name="groupby_product"
+                            string="Product"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter name="groupby_sku"
+                            string="SKU"
+                            context="{'group_by': 'sku'}"/>
+                    <filter name="groupby_category"
+                            string="Product Category"
+                            context="{'group_by': 'categ_id'}"/>
+                    <filter name="groupby_state"
+                            string="Status"
+                            context="{'group_by': 'state'}"/>
+                    <filter name="groupby_receipt_status"
+                            string="Receipt Status"
+                            context="{'group_by': 'receipt_status'}"/>
+                    <filter name="groupby_invoice_status"
+                            string="Billing Status"
+                            context="{'group_by': 'invoice_status'}"/>
+                    <filter name="groupby_uom"
+                            string="Unit of Measure"
+                            context="{'group_by': 'product_uom'}"/>
+                    <filter name="groupby_purchase_rep"
+                            string="Purchase Representative"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter name="groupby_company"
+                            string="Company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                    <filter name="groupby_date_order"
+                            string="Order Date"
+                            context="{'group_by': 'date_order'}"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         WINDOW ACTION
+    ═══════════════════════════════════════════════════════════════ -->
+    <record id="action_hk_purchase_report" model="ir.actions.act_window">
+        <field name="name">Purchase Consolidate Report</field>
+        <field name="res_model">hk.purchase.report</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_hk_purchase_report_list"/>
+        <field name="search_view_id" ref="view_hk_purchase_report_search"/>
+        <field name="context">{
+            'search_default_filter_purchase': 1,
+            'search_default_groupby_order': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No purchase lines found.
+            </p>
+            <p>
+                This report shows all purchase order lines with full details
+                including product, SKU, vendor, quantities and pricing.
+                Use the filters and group-by options to analyse your purchasing data.
+            </p>
+        </field>
+    </record>
+
+    <!-- ═══════════════════════════════════════════════════════════════
+         MENU ITEM  (Purchase > Reporting > Purchase Report)
+    ═══════════════════════════════════════════════════════════════ -->
+    <menuitem id="menu_hk_purchase_report"
+              name="Purchase Consolidate Report"
+              parent="purchase.purchase_report_main"
+              action="action_hk_purchase_report"
+              sequence="20"
+              groups="purchase.group_purchase_manager"/>
+
+</odoo>
