@@ -29,6 +29,7 @@ class HKPurchaseReport(models.Model):
     # ── Quantities ────────────────────────────────────────────────
     product_qty = fields.Float(string='Ordered Qty', digits='Product Unit of Measure', readonly=True)
     qty_received = fields.Float(string='Received Qty', digits='Product Unit of Measure', readonly=True)
+    qty_returned = fields.Float(string='Returned Qty', digits='Product Unit of Measure', readonly=True)
     qty_invoiced = fields.Float(string='Billed Qty', digits='Product Unit of Measure', readonly=True)
     qty_to_invoice = fields.Float(string='Qty to Bill', digits='Product Unit of Measure', readonly=True)
     qty_to_receive = fields.Float(string='Qty to Receive', digits='Product Unit of Measure', readonly=True)
@@ -94,6 +95,7 @@ class HKPurchaseReport(models.Model):
 
                     pol.product_qty                                 AS product_qty,
                     pol.qty_received                                AS qty_received,
+                    COALESCE(returns.qty_returned, 0)               AS qty_returned,
                     pol.qty_invoiced                                AS qty_invoiced,
                     GREATEST(pol.product_qty - pol.qty_invoiced, 0) AS qty_to_invoice,
                     GREATEST(pol.product_qty - pol.qty_received, 0) AS qty_to_receive,
@@ -136,5 +138,16 @@ class HKPurchaseReport(models.Model):
                     WHERE sm.purchase_line_id IS NOT NULL
                     GROUP BY sm.purchase_line_id
                 ) lots ON lots.purchase_line_id = pol.id
+                LEFT JOIN (
+                    SELECT
+                        sm.purchase_line_id                         AS purchase_line_id,
+                        SUM(sm.quantity)                            AS qty_returned
+                    FROM stock_move sm
+                    JOIN stock_location sl ON sl.id = sm.location_dest_id
+                    WHERE sm.purchase_line_id IS NOT NULL
+                      AND sm.state = 'done'
+                      AND sl.usage = 'supplier'
+                    GROUP BY sm.purchase_line_id
+                ) returns ON returns.purchase_line_id = pol.id
             )
         """)
