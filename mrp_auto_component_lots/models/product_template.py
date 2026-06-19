@@ -73,7 +73,7 @@ class ProductProduct(models.Model):
 
         prefix = self._get_or_create_auto_lot_prefix()
         date_token = self._get_auto_lot_date_token()
-        base_name = '%s-%s' % (prefix, date_token)
+        base_name = '%s%s' % (prefix, date_token)
 
         next_number = self._get_next_auto_lot_sequence(
             base_name=base_name,
