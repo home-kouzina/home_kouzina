@@ -5,5 +5,5 @@ class ResPartner(models.Model):
     _inherit = "res.partner"
 
     cin_image = fields.Image(string="CIN")
-    other_image = fields.Image(string="Other")
+    doc_image = fields.Image(string="Document")
     gst_number = fields.Char(string="GST Number")

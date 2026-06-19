@@ -12,7 +12,7 @@
                             <field name="cin_image" widget="image"/>
                         </group>
                         <group>
-                            <field name="other_image" widget="image"/>
+                            <field name="doc_image" widget="image"/>
                         </group>
                     </group>
                 </page>
