@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- List View -->
+    <record id="view_mo_cost_report_list" model="ir.ui.view">
+        <field name="name">mo.cost.report.list</field>
+        <field name="model">mo.cost.report</field>
+        <field name="arch" type="xml">
+            <list string="MO Cost Report"
+                  class="mo_cost_report_view"
+                  create="false" edit="false" delete="false"
+                  decoration-success="state == 'done'"
+                  decoration-info="state in ('confirmed', 'progress', 'to_close')"
+                  decoration-muted="state == 'draft'"
+                  decoration-danger="state == 'cancel'">
+                <field name="mo_name" string="MO Number"/>
+                <field name="product_id" string="Product"/>
+                <field name="sku_code" string="SKU" optional="show"/>
+                <field name="lot_producing_id" string="Lot/Serial Number" optional="show"/>
+                <field name="product_qty" string="Qty" optional="show"/>
+                <field name="product_uom_id" string="UoM" optional="show"/>
+                <field name="state" string="Status" widget="badge"
+                    decoration-success="state == 'done'"
+                    decoration-info="state in ('confirmed', 'progress', 'to_close')"
+                    decoration-muted="state == 'cancel'"
+                    optional="show"/>
+                <field name="date_start" string="Scheduled Date" optional="show"/>
+                <field name="requested_by_id" string="Requested By"/>
+                <field name="approved_by_id" string="Approved By"/>
+                <field name="currency_id" column_invisible="1"/>
+                <field name="mo_cost" string="Cost" widget="monetary"
+                    options="{'currency_field': 'currency_id'}"
+                    sum="Total Cost"/>
+                <field name="company_id" string="Company" optional="hide"
+                    groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Search View -->
+    <record id="view_mo_cost_report_search" model="ir.ui.view">
+        <field name="name">mo.cost.report.search</field>
+        <field name="model">mo.cost.report</field>
+        <field name="arch" type="xml">
+            <search string="Search MO Cost Report">
+                <field name="mo_name" string="MO Number"/>
+                <field name="product_id" string="Product"/>
+                <field name="sku_code" string="SKU"/>
+                <field name="lot_producing_id" string="Lot/Serial Number"/>
+                <field name="requested_by_id" string="Requested By"/>
+                <field name="approved_by_id" string="Approved By"/>
+                <separator/>
+                <filter string="Draft" name="draft" domain="[('state','=','draft')]"/>
+                <filter string="In Progress" name="in_progress"
+                    domain="[('state','in',['confirmed','progress','to_close'])]"/>
+                <filter string="Done" name="done" domain="[('state','=','done')]"/>
+                <filter string="Cancelled" name="cancelled" domain="[('state','=','cancel')]"/>
+                <separator/>
+                <filter string="This Month" name="this_month"
+                    domain="[('date_start','&gt;=', (context_today()).strftime('%Y-%m-01'))]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Product" name="group_product"
+                        context="{'group_by': 'product_id'}"/>
+                    <filter string="Lot/Serial Number" name="group_lot"
+                        context="{'group_by': 'lot_producing_id'}"/>
+                    <filter string="Requested By" name="group_requested_by"
+                        context="{'group_by': 'requested_by_id'}"/>
+                    <filter string="Approved By" name="group_approved_by"
+                        context="{'group_by': 'approved_by_id'}"/>
+                    <filter string="Status" name="group_state"
+                        context="{'group_by': 'state'}"/>
+                    <filter string="Scheduled Date" name="group_date"
+                        context="{'group_by': 'date_start:month'}"/>
+                    <filter string="Company" name="group_company"
+                        context="{'group_by': 'company_id'}"
+                        groups="base.group_multi_company"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_mo_cost_report" model="ir.actions.act_window">
+        <field name="name">MO Consolidate Report</field>
+        <field name="res_model">mo.cost.report</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_mo_cost_report_list"/>
+        <field name="search_view_id" ref="view_mo_cost_report_search"/>
+        <field name="context">{
+            'search_default_in_progress': 0,
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Manufacturing Orders found.
+            </p>
+            <p>
+                This report shows the cost for each Manufacturing Order,
+                including the product and MO number.
+            </p>
+        </field>
+    </record>
+
+</odoo>

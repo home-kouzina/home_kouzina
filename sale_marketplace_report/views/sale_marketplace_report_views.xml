@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================
+         LIST VIEW
+    ================================================================ -->
+    <record id="view_sale_marketplace_report_list" model="ir.ui.view">
+        <field name="name">sale.marketplace.report.list</field>
+        <field name="model">sale.marketplace.report</field>
+        <field name="arch" type="xml">
+            <list string="Marketplace Report"
+                  class="sale_marketplace_report_view"
+                  create="false" edit="false" delete="false"
+                  decoration-success="state == 'done'"
+                  decoration-info="state == 'sale'"
+                  decoration-warning="state == 'sent'"
+                  decoration-muted="state == 'draft'"
+                  decoration-danger="state == 'cancel'">
+
+                <field name="so_name"          string="SO Number" widget="char"/>
+                <field name="so_id"            column_invisible="1"/>
+                <field name="order_date"       string="Order Date"/>
+                <field name="partner_id"       string="Customer"/>
+                <field name="marketplace_type" string="Marketplace"/>
+                <field name="product_id"       string="Product"/>
+                <field name="product_uom_qty"  string="Qty"/>
+                <field name="currency_id"      column_invisible="1"/>
+                <field name="price_unit"       string="Unit Price"
+                       widget="monetary"
+                       options="{'currency_field': 'currency_id'}"/>
+                <field name="price_subtotal"   string="Total Amount"
+                       widget="monetary"
+                       options="{'currency_field': 'currency_id'}"
+                       sum="Grand Total"/>
+                <field name="state"            string="Status"
+                       widget="badge"
+                       decoration-success="state == 'done'"
+                       decoration-info="state == 'sale'"
+                       decoration-warning="state == 'sent'"
+                       decoration-muted="state == 'draft'"
+                       decoration-danger="state == 'cancel'"/>
+                <field name="user_id"          string="Salesperson"/>
+                <field name="company_id"       string="Company"
+                       optional="hide"
+                       groups="base.group_multi_company"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         SEARCH VIEW
+    ================================================================ -->
+    <record id="view_sale_marketplace_report_search" model="ir.ui.view">
+        <field name="name">sale.marketplace.report.search</field>
+        <field name="model">sale.marketplace.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Marketplace Report">
+
+                <field name="so_name"          string="SO Number"/>
+                <field name="partner_id"       string="Customer"/>
+                <field name="product_id"       string="Product"/>
+                <field name="marketplace_type" string="Marketplace"/>
+                <field name="user_id"          string="Salesperson"/>
+
+                <separator/>
+
+                <!-- Status filters -->
+                <filter string="Quotation"      name="draft"    domain="[('state','=','draft')]"/>
+                <filter string="Quotation Sent" name="sent"     domain="[('state','=','sent')]"/>
+                <filter string="Sales Order"    name="sale"     domain="[('state','=','sale')]"/>
+                <filter string="Locked"         name="done"     domain="[('state','=','done')]"/>
+                <filter string="Cancelled"      name="cancel"   domain="[('state','=','cancel')]"/>
+
+                <separator/>
+
+                <!-- Marketplace quick filters -->
+                <filter string="Blinkit"   name="mp_blinkit"   domain="[('marketplace_type','=','Blinkit')]"/>
+                <filter string="Flipkart"  name="mp_flipkart"  domain="[('marketplace_type','=','Flipkart')]"/>
+                <filter string="Instamart" name="mp_instamart" domain="[('marketplace_type','=','Instamart')]"/>
+                <filter string="Meesho"    name="mp_meesho"    domain="[('marketplace_type','=','Meesho')]"/>
+                <filter string="Myntra"    name="mp_myntra"    domain="[('marketplace_type','=','Myntra')]"/>
+                <filter string="Zepto"     name="mp_zepto"     domain="[('marketplace_type','=','Zepto')]"/>
+
+                <separator/>
+
+                <filter string="This Month" name="this_month"
+                        domain="[('order_date','&gt;=',(context_today()).strftime('%Y-%m-01'))]"/>
+
+                <!-- Group By -->
+                <group expand="0" string="Group By">
+                    <filter string="Marketplace"   name="group_marketplace"
+                            context="{'group_by': 'marketplace_type'}"/>
+                    <filter string="Customer"      name="group_customer"
+                            context="{'group_by': 'partner_id'}"/>
+                    <filter string="Product"       name="group_product"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter string="Salesperson"   name="group_salesperson"
+                            context="{'group_by': 'user_id'}"/>
+                    <filter string="Status"        name="group_state"
+                            context="{'group_by': 'state'}"/>
+                    <filter string="Order Date"    name="group_date"
+                            context="{'group_by': 'order_date:month'}"/>
+                    <filter string="Company"       name="group_company"
+                            context="{'group_by': 'company_id'}"
+                            groups="base.group_multi_company"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- ================================================================
+         WINDOW ACTION
+    ================================================================ -->
+    <record id="action_sale_marketplace_report" model="ir.actions.act_window">
+        <field name="name">Marketplace Report</field>
+        <field name="res_model">sale.marketplace.report</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_sale_marketplace_report_list"/>
+        <field name="search_view_id" ref="view_sale_marketplace_report_search"/>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No sales orders found.
+            </p>
+            <p>
+                This report shows all sale order lines grouped by marketplace,
+                including product, pricing, quantity and salesperson details.
+            </p>
+        </field>
+    </record>
+
+</odoo>

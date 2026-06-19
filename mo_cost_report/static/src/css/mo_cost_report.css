@@ -1,0 +1,295 @@
+/* ============================================================
+   MO Cost Report - Scoped to .mo_cost_report_view
+   ============================================================ */
+
+/* Table Base Layout & Crisp Typography */
+.mo_cost_report_view {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header - Modern Sticky Dark Card Look */
+.mo_cost_report_view thead tr:first-child th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    padding: 14px 20px !important;
+    border-bottom: 2px solid #334155 !important;
+    border-top: none !important;
+    box-shadow: inset 0 -1px 0 #334155;
+}
+
+/* Checkbox column in header */
+.mo_cost_report_view thead tr:first-child th.o_list_record_selector {
+    background: #0f172a !important;
+}
+
+/* Base row cells */
+.mo_cost_report_view tbody tr.o_data_row td {
+    padding: 12px 20px !important;
+    font-size: 13px !important;
+    color: #334155 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    vertical-align: middle !important;
+    background: #ffffff;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover effect */
+.mo_cost_report_view tbody tr.o_data_row:hover td {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+/* ---- State Row Indicators ---- */
+
+/* Done (Green) */
+.mo_cost_report_view tbody tr.o_data_row.text-success td {
+    background: #f0fdf4 !important;
+    color: #166534 !important;
+}
+.mo_cost_report_view tbody tr.o_data_row.text-success td:first-child {
+    border-left: 4px solid #22c55e !important;
+}
+
+/* In Progress / Confirmed / To Close (Blue) */
+.mo_cost_report_view tbody tr.o_data_row.text-info td {
+    background: #f0f9ff !important;
+    color: #0369a1 !important;
+}
+.mo_cost_report_view tbody tr.o_data_row.text-info td:first-child {
+    border-left: 4px solid #3b82f6 !important;
+}
+
+/* Draft (Gray) */
+.mo_cost_report_view tbody tr.o_data_row.text-muted td {
+    background: #f8fafc !important;
+    color: #64748b !important;
+}
+.mo_cost_report_view tbody tr.o_data_row.text-muted td:first-child {
+    border-left: 4px solid #94a3b8 !important;
+}
+
+/* Cancelled (Red) */
+.mo_cost_report_view tbody tr.o_data_row.text-danger td {
+    background: #fff1f2 !important;
+    color: #991b1b !important;
+}
+.mo_cost_report_view tbody tr.o_data_row.text-danger td:first-child {
+    border-left: 4px solid #f43f5e !important;
+}
+
+/* ---- Status Badges ---- */
+.mo_cost_report_view .badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 12px !important;
+    border-radius: 9999px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Animated dot before each badge */
+.mo_cost_report_view .badge::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.mo_cost_report_view .badge.text-bg-success,
+.mo_cost_report_view .badge.bg-success {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
+}
+
+.mo_cost_report_view .badge.text-bg-info,
+.mo_cost_report_view .badge.bg-info {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+
+.mo_cost_report_view .badge.text-bg-secondary,
+.mo_cost_report_view .badge.bg-secondary {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+}
+
+.mo_cost_report_view .badge.text-bg-danger,
+.mo_cost_report_view .badge.bg-danger {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border-color: #fecaca !important;
+}
+
+.mo_cost_report_view .badge.text-bg-warning,
+.mo_cost_report_view .badge.bg-warning {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+
+/* MO Number - Monospace dev styling */
+.mo_cost_report_view td[name="mo_name"] {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    letter-spacing: -0.01em;
+}
+
+/* SKU - monospace orange chip */
+.mo_cost_report_view td[name="sku_code"] {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+    font-weight: 600 !important;
+    font-size: 11px !important;
+    color: #c2410c !important;
+    background: #fff7ed !important;
+    border-radius: 6px !important;
+    padding: 3px 10px !important;
+    border: 1px solid #fed7aa !important;
+    display: inline-block;
+}
+
+/* Lot/Serial Number - teal pill */
+.mo_cost_report_view td[name="lot_producing_id"] .o_form_uri,
+.mo_cost_report_view td[name="lot_producing_id"] span {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: #f0fdfa !important;
+    border: 1px solid #99f6e4 !important;
+    border-radius: 9999px !important;
+    padding: 3px 10px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #0f766e !important;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+}
+.mo_cost_report_view td[name="lot_producing_id"] .o_form_uri:hover {
+    background: #ccfbf1 !important;
+    border-color: #5eead4 !important;
+    color: #115e59 !important;
+}
+
+/* Cost column - right-aligned with emphasis */
+.mo_cost_report_view td[name="mo_cost"] {
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    color: #0f172a !important;
+    text-align: right !important;
+}
+
+/* Smart Many2one Navigation Links */
+.mo_cost_report_view .o_form_uri {
+    color: #3b82f6 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border-bottom: 1px dashed transparent;
+    transition: all 0.15s ease;
+}
+.mo_cost_report_view .o_form_uri:hover {
+    color: #1d4ed8 !important;
+    text-decoration: none !important;
+    border-bottom-color: #1d4ed8;
+}
+
+/* Requested By / Approved By - subtle avatar-pill look */
+.mo_cost_report_view td[name="requested_by_id"] .o_form_uri,
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 9999px !important;
+    padding: 3px 10px 3px 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #334155 !important;
+}
+.mo_cost_report_view td[name="requested_by_id"] .o_form_uri:hover,
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri:hover {
+    background: #e0f2fe !important;
+    border-color: #bae6fd !important;
+    color: #0369a1 !important;
+}
+
+/* Approved By - green pill when present */
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #166534 !important;
+}
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri:hover {
+    background: #dcfce7 !important;
+    border-color: #86efac !important;
+}
+
+/* Selected Row Highlight */
+.mo_cost_report_view tbody tr.o_data_row.o_selected_row td {
+    background: #fffbeb !important;
+}
+.mo_cost_report_view tbody tr.o_data_row.o_selected_row td:first-child {
+    border-left: 4px solid #f59e0b !important;
+    box-shadow: inset 2px 0 0 rgba(245, 158, 11, 0.1);
+}
+
+/* Force all row text to dark black */
+.mo_cost_report_view tbody tr.o_data_row td,
+.mo_cost_report_view tbody tr.o_data_row td span,
+.mo_cost_report_view tbody tr.o_data_row td a,
+.mo_cost_report_view tbody tr.o_data_row .o_form_uri {
+    color: #000000 !important;
+    font-weight: 500 !important;
+}
+
+/* Keep row state backgrounds but force text black */
+.mo_cost_report_view tbody tr.o_data_row.text-success td,
+.mo_cost_report_view tbody tr.o_data_row.text-info td,
+.mo_cost_report_view tbody tr.o_data_row.text-muted td,
+.mo_cost_report_view tbody tr.o_data_row.text-danger td {
+    color: #000000 !important;
+}
+
+/* Restore user pill colors even with global black override */
+.mo_cost_report_view td[name="requested_by_id"] .o_form_uri,
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri {
+    color: #334155 !important;
+    font-weight: 500 !important;
+}
+.mo_cost_report_view td[name="approved_by_id"] .o_form_uri {
+    color: #166534 !important;
+}
+
+/* Cost column stays dark regardless of row state */
+.mo_cost_report_view td[name="mo_cost"],
+.mo_cost_report_view td[name="mo_cost"] span {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+
+/* Restore SKU chip color after global black override */
+.mo_cost_report_view td[name="sku_code"],
+.mo_cost_report_view td[name="sku_code"] span {
+    color: #c2410c !important;
+    font-weight: 600 !important;
+}
+
+/* Restore Lot/Serial pill color after global black override */
+.mo_cost_report_view td[name="lot_producing_id"] .o_form_uri,
+.mo_cost_report_view td[name="lot_producing_id"] span {
+    color: #0f766e !important;
+    font-weight: 600 !important;
+}

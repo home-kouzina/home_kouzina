@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Confirmed via Settings > Technical > Database Structure > Fields:
+        sale.order has a stored Char field 'amazon_order_ref' ("Amazon
+        Reference") which is only set on orders synced from Amazon.
+    -->
+    <record id="action_amazon_orders" model="ir.actions.act_window">
+        <field name="name">Amazon Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,kanban,form,calendar,pivot,graph,activity</field>
+        <field name="domain">[('amazon_order_ref', '!=', False)]</field>
+        <field name="context">{'create': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No Amazon orders found
+            </p>
+            <p>
+                Orders synced from your Amazon account will show up here.
+            </p>
+        </field>
+    </record>
+
+    <!--
+        Menu item, placed as a sibling of Quotations / Orders / Customers
+        inside the "Orders" tab (sale.sale_order_menu) of the Sales app.
+    -->
+    <menuitem id="menu_amazon_orders"
+              name="Amazon Orders"
+              parent="sale.sale_order_menu"
+              action="action_amazon_orders"
+              groups="sales_team.group_sale_salesman"
+              sequence="25"/>
+
+
+    <!--  search filter-->
+    <record id="view_sales_order_filter_inherit_marketplace_type" model="ir.ui.view">
+        <field name="name">sale.order.search.inherit.marketplace.type</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_sales_order_filter"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='salesperson']" position="after">
+                <filter string="Marketplace Type"
+                        name="group_by_marketplace_type"
+                        context="{'group_by': 'marketplace_type'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="action_shopify_sale_orders" model="ir.actions.act_window">
+        <field name="name">Shopify Orders</field>
+        <field name="res_model">sale.order</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('shopify_order_id', '!=', False)]</field>
+        <field name="context">{'search_default_my_orders': 0, 'create': False}</field>
+    </record>
+
+    <menuitem id="menu_shopify_sale_orders"
+              name="Shopify Orders"
+              action="action_shopify_sale_orders"
+              parent="sale.sale_order_menu"
+              sequence="20"/>
+
+</odoo>
