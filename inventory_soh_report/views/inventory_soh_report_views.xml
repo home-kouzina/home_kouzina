@@ -81,7 +81,6 @@
                   create="false"
                   edit="false"
                   delete="false"
-                  export_xlsx="true"
                   default_order="product_id asc">
 
                 <!-- ── Identification columns ── -->
