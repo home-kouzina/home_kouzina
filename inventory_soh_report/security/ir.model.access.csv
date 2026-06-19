@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_inventory_soh_report_user,inventory.soh.report.user,model_inventory_soh_report,stock.group_stock_user,1,0,0,0
+access_inventory_soh_report_manager,inventory.soh.report.manager,model_inventory_soh_report,stock.group_stock_manager,1,0,0,0
