@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Add "Inventory SOH Report" under the existing
+        Inventory ▶ Reporting menu group.
+
+        stock.menu_stock_report is the standard Odoo 18
+        "Reporting" parent menu inside the Inventory app.
+    -->
+    <menuitem
+        id="menu_inventory_soh_report"
+        name="Inventory SOH Report"
+        parent="stock.menu_warehouse_report"
+        action="action_inventory_soh_report"
+        sequence="25"
+        groups="stock.group_stock_user"/>
+
+</odoo>

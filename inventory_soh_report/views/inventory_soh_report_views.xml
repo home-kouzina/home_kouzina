@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         SEARCH VIEW
+         Allows filtering by product, product type, and category
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="view_inventory_soh_report_search" model="ir.ui.view">
+        <field name="name">inventory.soh.report.search</field>
+        <field name="model">inventory.soh.report</field>
+        <field name="arch" type="xml">
+            <search string="Search Inventory SOH Report">
+
+                <!-- Quick-search by product name -->
+                <field name="product_id" string="Product"
+                       filter_domain="[('product_id.name', 'ilike', self)]"/>
+
+                <!-- Quick-search by product type -->
+                <field name="product_type" string="Product Type"/>
+
+                <!-- Quick-search by category -->
+                <field name="categ_id" string="Category"/>
+
+                <separator/>
+
+                <!-- Pre-built filter: Storable Products only -->
+                <filter string="Storable Products"
+                        name="filter_storable"
+                        domain="[('product_type', '=', 'product')]"/>
+
+                <!-- Pre-built filter: Consumables only -->
+                <filter string="Consumables"
+                        name="filter_consumable"
+                        domain="[('product_type', '=', 'consu')]"/>
+
+                <separator/>
+
+                <!-- Products with variance -->
+                <filter string="Has Variance"
+                        name="filter_has_variance"
+                        domain="[('variance', '!=', 0)]"/>
+
+                <!-- Products with zero stock -->
+                <filter string="Out of Stock"
+                        name="filter_out_of_stock"
+                        domain="[('qty_on_hand', '&lt;=', 0)]"/>
+
+                <!-- Products with low actual SOH -->
+                <filter string="Negative Actual SOH"
+                        name="filter_negative_soh"
+                        domain="[('actual_soh', '&lt;', 0)]"/>
+
+                <separator/>
+
+                <!-- Group-by options -->
+                <group expand="0" string="Group By">
+                    <filter string="Product Type"
+                            name="groupby_product_type"
+                            context="{'group_by': 'product_type'}"/>
+                    <filter string="Product Category"
+                            name="groupby_categ"
+                            context="{'group_by': 'categ_id'}"/>
+                    <filter string="Unit of Measure"
+                            name="groupby_uom"
+                            context="{'group_by': 'uom_id'}"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         LIST VIEW (main report view)
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="view_inventory_soh_report_list" model="ir.ui.view">
+        <field name="name">inventory.soh.report.list</field>
+        <field name="model">inventory.soh.report</field>
+        <field name="arch" type="xml">
+            <list string="Inventory SOH Report"
+                  create="false"
+                  edit="false"
+                  delete="false"
+                  export_xlsx="true"
+                  default_order="product_id asc">
+
+                <!-- ── Identification columns ── -->
+                <field name="product_id"
+                       string="Product"
+                       optional="show"/>
+
+                <field name="categ_id"
+                       string="Category"
+                       optional="show"/>
+
+                <field name="product_type"
+                       string="Product Type"
+                       optional="show"
+                       widget="badge"
+                       decoration-success="product_type == 'product'"
+                       decoration-warning="product_type == 'consu'"/>
+
+                <field name="uom_id"
+                       string="UoM"
+                       optional="hide"/>
+
+                <!-- ── Stock movement columns ── -->
+                <field name="qty_on_hand"
+                       string="Current On Hand"
+                       optional="show"
+                       decoration-danger="qty_on_hand &lt;= 0"
+                       decoration-success="qty_on_hand &gt; 0"
+                       sum="Total On Hand"/>
+
+                <field name="qty_inward"
+                       string="Inward Qty"
+                       optional="show"
+                       sum="Total Inward"/>
+
+                <field name="qty_consumption"
+                       string="Consumption"
+                       optional="show"
+                       sum="Total Consumption"/>
+
+                <field name="qty_return"
+                       string="Return"
+                       optional="show"
+                       sum="Total Returns"/>
+
+                <field name="qty_wastage"
+                       string="Wastage"
+                       optional="show"
+                       decoration-danger="qty_wastage &gt; 0"
+                       sum="Total Wastage"/>
+
+                <!-- ── SOH & Variance columns ── -->
+                <field name="ideal_soh"
+                       string="Ideal SOH"
+                       optional="show"
+                       sum="Total Ideal SOH"
+                       help="Current On Hand + Inward - Consumption - Return - Wastage"/>
+
+                <field name="variance"
+                       string="Variance"
+                       optional="show"
+                       decoration-danger="variance &gt; 0"
+                       decoration-muted="variance == 0"
+                       sum="Total Variance"/>
+
+                <field name="actual_soh"
+                       string="Actual SOH"
+                       optional="show"
+                       decoration-danger="actual_soh &lt; 0"
+                       decoration-success="actual_soh &gt;= 0"
+                       sum="Total Actual SOH"
+                       help="Ideal SOH - Variance"/>
+
+            </list>
+        </field>
+    </record>
+
+
+    <!-- ══════════════════════════════════════════════════════════════════
+         ACTION
+    ══════════════════════════════════════════════════════════════════ -->
+    <record id="action_inventory_soh_report" model="ir.actions.act_window">
+        <field name="name">Inventory SOH Report</field>
+        <field name="res_model">inventory.soh.report</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_inventory_soh_report_list"/>
+        <field name="search_view_id" ref="view_inventory_soh_report_search"/>
+        <field name="context">{
+            'search_default_filter_storable': 1
+        }</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No inventory data found.
+            </p>
+            <p>
+                This report shows a consolidated view of your inventory including
+                on-hand stock, inward receipts, consumption, returns, wastage,
+                ideal and actual stock on hand, and any variance.
+            </p>
+        </field>
+    </record>
+
+</odoo>

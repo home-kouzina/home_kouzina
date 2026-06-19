@@ -476,4 +476,4 @@ class InventoryVariationLine(models.Model):
         """
         for rec in self:
             # Calculate variation, using 0.0 if any field is empty
-            rec.variation_qty = (rec.physical_qty or 0.0) - (rec.theoretical_qty or 0.0)
+            rec.variation_qty = (rec.theoretical_qty or 0.0) - (rec.physical_qty or 0.0)
