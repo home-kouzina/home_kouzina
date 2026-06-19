@@ -1,6 +1,6 @@
 {
     'name': 'HK Purchase Report',
-    'version': '18.0.1.0',
+    'version': '18.0.1.1',
     'summary': 'Detailed Purchase Reporting List View with Advanced Filters',
     'description': """
         Provides a comprehensive Purchase Reporting screen under Purchase > Reporting.

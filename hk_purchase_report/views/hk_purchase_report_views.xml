@@ -36,6 +36,8 @@
                        sum="Total Ordered" optional="hide"/>
                 <field name="qty_received" string="Received Qty"
                        sum="Total Received" optional="hide"/>
+                <field name="qty_returned" string="Returned Qty"
+                       sum="Total Returned" optional="hide"/>
                 <field name="qty_to_receive" string="Qty to Receive"
                        sum="Qty to Receive" optional="hide"/>
                 <field name="qty_invoiced" string="Billed Qty"
