@@ -1,0 +1,17 @@
+<odoo>
+    <record id="view_marketplace_update_wizard_form" model="ir.ui.view">
+        <field name="name">marketplace.update.wizard.form</field>
+        <field name="model">marketplace.update.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Update Marketplace Type">
+                <group>
+                    <field name="marketplace_type"/>
+                </group>
+                <footer>
+                    <button name="action_apply" type="object" string="Apply" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

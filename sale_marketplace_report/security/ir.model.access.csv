@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_sale_marketplace_report_user,sale.marketplace.report.user,model_sale_marketplace_report,sales_team.group_sale_salesman,1,0,0,0
+access_sale_marketplace_report_manager,sale.marketplace.report.manager,model_sale_marketplace_report,sales_team.group_sale_salesman_all_leads,1,0,0,0

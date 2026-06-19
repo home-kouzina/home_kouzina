@@ -1,0 +1,8 @@
+<odoo>
+    <record id="action_marketplace_update_wizard" model="ir.actions.act_window">
+        <field name="name">Set Marketplace Type</field>
+        <field name="res_model">marketplace.update.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

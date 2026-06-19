@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mo_cost_report_user,mo.cost.report.user,model_mo_cost_report,mrp.group_mrp_user,1,0,0,0
+access_mo_cost_report_manager,mo.cost.report.manager,model_mo_cost_report,mrp.group_mrp_manager,1,0,0,0

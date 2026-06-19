@@ -1,0 +1,266 @@
+/* ============================================================
+   Sale Marketplace Report - Scoped to .sale_marketplace_report_view
+   ============================================================ */
+
+/* Table Base */
+.sale_marketplace_report_view {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Header - Dark slate */
+.sale_marketplace_report_view thead tr:first-child th {
+    background: #0f172a !important;
+    color: #cbd5e1 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    padding: 14px 20px !important;
+    border-bottom: 2px solid #334155 !important;
+    border-top: none !important;
+    box-shadow: inset 0 -1px 0 #334155;
+}
+
+.sale_marketplace_report_view thead tr:first-child th.o_list_record_selector {
+    background: #0f172a !important;
+}
+
+/* Base row cells */
+.sale_marketplace_report_view tbody tr.o_data_row td {
+    padding: 12px 20px !important;
+    font-size: 13px !important;
+    color: #334155 !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    vertical-align: middle !important;
+    background: #ffffff;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Hover */
+.sale_marketplace_report_view tbody tr.o_data_row:hover td {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+}
+
+/* ---- Row state colors ---- */
+
+/* Locked / Done (Green) */
+.sale_marketplace_report_view tbody tr.o_data_row.text-success td {
+    background: #f0fdf4 !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-success td:first-child {
+    border-left: 4px solid #22c55e !important;
+}
+
+/* Sales Order (Blue) */
+.sale_marketplace_report_view tbody tr.o_data_row.text-info td {
+    background: #f0f9ff !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-info td:first-child {
+    border-left: 4px solid #3b82f6 !important;
+}
+
+/* Quotation Sent (Amber) */
+.sale_marketplace_report_view tbody tr.o_data_row.text-warning td {
+    background: #fffbeb !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-warning td:first-child {
+    border-left: 4px solid #f59e0b !important;
+}
+
+/* Draft Quotation (Gray) */
+.sale_marketplace_report_view tbody tr.o_data_row.text-muted td {
+    background: #f8fafc !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-muted td:first-child {
+    border-left: 4px solid #94a3b8 !important;
+}
+
+/* Cancelled (Red) */
+.sale_marketplace_report_view tbody tr.o_data_row.text-danger td {
+    background: #fff1f2 !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-danger td:first-child {
+    border-left: 4px solid #f43f5e !important;
+}
+
+/* ---- Badges ---- */
+.sale_marketplace_report_view .badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 5px 12px !important;
+    border-radius: 9999px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    border: 1px solid transparent !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+.sale_marketplace_report_view .badge::before {
+    content: "";
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.sale_marketplace_report_view .badge.text-bg-success,
+.sale_marketplace_report_view .badge.bg-success {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border-color: #bbf7d0 !important;
+}
+.sale_marketplace_report_view .badge.text-bg-info,
+.sale_marketplace_report_view .badge.bg-info {
+    background: #e0f2fe !important;
+    color: #0369a1 !important;
+    border-color: #bae6fd !important;
+}
+.sale_marketplace_report_view .badge.text-bg-warning,
+.sale_marketplace_report_view .badge.bg-warning {
+    background: #fef3c7 !important;
+    color: #b45309 !important;
+    border-color: #fde68a !important;
+}
+.sale_marketplace_report_view .badge.text-bg-secondary,
+.sale_marketplace_report_view .badge.bg-secondary {
+    background: #f1f5f9 !important;
+    color: #475569 !important;
+    border-color: #e2e8f0 !important;
+}
+.sale_marketplace_report_view .badge.text-bg-danger,
+.sale_marketplace_report_view .badge.bg-danger {
+    background: #fee2e2 !important;
+    color: #b91c1c !important;
+    border-color: #fecaca !important;
+}
+
+/* SO Number - monospace */
+.sale_marketplace_report_view td[name="so_name"] {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    letter-spacing: -0.01em;
+}
+
+/* Marketplace - colored pill chip */
+.sale_marketplace_report_view td[name="marketplace_type"] span,
+.sale_marketplace_report_view td[name="marketplace_type"] {
+    display: inline-block;
+    background: #ede9fe !important;
+    color: #6d28d9 !important;
+    padding: 3px 10px !important;
+    border-radius: 9999px !important;
+    border: 1px solid #ddd6fe !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.02em;
+}
+
+/* Total Amount - bold emphasis */
+.sale_marketplace_report_view td[name="price_subtotal"],
+.sale_marketplace_report_view td[name="price_subtotal"] span {
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    color: #0f172a !important;
+}
+
+/* Unit Price */
+.sale_marketplace_report_view td[name="price_unit"],
+.sale_marketplace_report_view td[name="price_unit"] span {
+    font-weight: 600 !important;
+    color: #334155 !important;
+}
+
+/* Smart Many2one links */
+.sale_marketplace_report_view .o_form_uri {
+    color: #3b82f6 !important;
+    font-weight: 600 !important;
+    text-decoration: none !important;
+    border-bottom: 1px dashed transparent;
+    transition: all 0.15s ease;
+}
+.sale_marketplace_report_view .o_form_uri:hover {
+    color: #1d4ed8 !important;
+    border-bottom-color: #1d4ed8;
+}
+
+/* Salesperson - subtle pill */
+.sale_marketplace_report_view td[name="user_id"] .o_form_uri {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 9999px !important;
+    padding: 3px 10px 3px 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #334155 !important;
+}
+.sale_marketplace_report_view td[name="user_id"] .o_form_uri:hover {
+    background: #e0f2fe !important;
+    border-color: #bae6fd !important;
+    color: #0369a1 !important;
+}
+
+/* Customer - blue tinted pill */
+.sale_marketplace_report_view td[name="partner_id"] .o_form_uri {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: #eff6ff !important;
+    border: 1px solid #bfdbfe !important;
+    border-radius: 9999px !important;
+    padding: 3px 10px 3px 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #1d4ed8 !important;
+}
+.sale_marketplace_report_view td[name="partner_id"] .o_form_uri:hover {
+    background: #dbeafe !important;
+    border-color: #93c5fd !important;
+}
+
+/* Selected row */
+.sale_marketplace_report_view tbody tr.o_data_row.o_selected_row td {
+    background: #fffbeb !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.o_selected_row td:first-child {
+    border-left: 4px solid #f59e0b !important;
+    box-shadow: inset 2px 0 0 rgba(245, 158, 11, 0.1);
+}
+
+/* Force all text dark */
+.sale_marketplace_report_view tbody tr.o_data_row td,
+.sale_marketplace_report_view tbody tr.o_data_row td span,
+.sale_marketplace_report_view tbody tr.o_data_row td a,
+.sale_marketplace_report_view tbody tr.o_data_row .o_form_uri {
+    color: #000000 !important;
+    font-weight: 500 !important;
+}
+.sale_marketplace_report_view tbody tr.o_data_row.text-success td,
+.sale_marketplace_report_view tbody tr.o_data_row.text-info td,
+.sale_marketplace_report_view tbody tr.o_data_row.text-warning td,
+.sale_marketplace_report_view tbody tr.o_data_row.text-muted td,
+.sale_marketplace_report_view tbody tr.o_data_row.text-danger td {
+    color: #000000 !important;
+}
+
+/* Restore pill & price colors after global override */
+.sale_marketplace_report_view td[name="marketplace_type"],
+.sale_marketplace_report_view td[name="marketplace_type"] span {
+    color: #6d28d9 !important;
+}
+.sale_marketplace_report_view td[name="price_subtotal"],
+.sale_marketplace_report_view td[name="price_subtotal"] span {
+    color: #0f172a !important;
+    font-weight: 700 !important;
+}
+.sale_marketplace_report_view td[name="partner_id"] .o_form_uri {
+    color: #1d4ed8 !important;
+}
+.sale_marketplace_report_view td[name="approved_by_id"] .o_form_uri {
+    color: #166534 !important;
+}

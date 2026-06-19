@@ -1,0 +1,35 @@
+<odoo>
+    <!-- Header button on Quotations list (active only when records are selected) -->
+    <record id="view_quotation_tree_marketplace_button" model="ir.ui.view">
+        <field name="name">sale.order.list.marketplace.button</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <list position="inside">
+                <header>
+                    <button name="%(action_marketplace_update_wizard)d"
+                            type="action"
+                            string="Set Marketplace Type"
+                            class="btn-secondary"/>
+                </header>
+            </list>
+        </field>
+    </record>
+
+    <!-- Same for the Sales Orders list view -->
+    <record id="view_order_tree_marketplace_button" model="ir.ui.view">
+        <field name="name">sale.order.list.marketplace.button.confirmed</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_tree"/>
+        <field name="arch" type="xml">
+            <list position="inside">
+                <header>
+                    <button name="%(action_marketplace_update_wizard)d"
+                            type="action"
+                            string="Set Marketplace Type"
+                            class="btn-secondary"/>
+                </header>
+            </list>
+        </field>
+    </record>
+</odoo>

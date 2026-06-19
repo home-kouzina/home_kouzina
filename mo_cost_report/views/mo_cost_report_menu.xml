@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Adds "MO Cost Report" under:
+        Manufacturing  ▸  Reporting  ▸  MO Cost Report
+    -->
+    <menuitem
+        id="menu_mo_cost_report"
+        name="MO Consolidate Report"
+        parent="mrp.menu_mrp_reporting"
+        action="action_mo_cost_report"
+        sequence="25"
+        groups="mrp.group_mrp_user"/>
+
+</odoo>

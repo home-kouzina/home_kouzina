@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Adds "Marketplace Report" under:
+        Sales  ▸  Reporting  ▸  Marketplace Report
+    -->
+    <menuitem
+        id="menu_sale_marketplace_report"
+        name="Marketplace Report"
+        parent="sale.menu_sale_report"
+        action="action_sale_marketplace_report"
+        sequence="25"
+        groups="sales_team.group_sale_salesman"/>
+
+</odoo>
