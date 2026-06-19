@@ -23,6 +23,7 @@ class SaleMarketplaceReport(models.Model):
     # Customer & Salesperson
     partner_id = fields.Many2one('res.partner', string='Customer', readonly=True)
     user_id = fields.Many2one('res.users', string='Salesperson', readonly=True)
+    city = fields.Char(string='City', readonly=True)
 
     # Marketplace
     marketplace_type = fields.Char(string='Marketplace', readonly=True)
@@ -33,6 +34,7 @@ class SaleMarketplaceReport(models.Model):
     product_tmpl_id = fields.Many2one('product.template', string='Product Template', readonly=True)
     price_unit = fields.Float(string='Unit Price', digits='Product Price', readonly=True)
     product_uom_qty = fields.Float(string='Quantity', readonly=True)
+    discount = fields.Float(string='Discount (%)', digits='Discount', readonly=True)
     price_subtotal = fields.Float(string='Total Amount', digits='Product Price', readonly=True)
 
     # Currency
@@ -52,6 +54,7 @@ class SaleMarketplaceReport(models.Model):
                     so.date_order                   AS order_date,
                     so.partner_id                   AS partner_id,
                     so.user_id                      AS user_id,
+                    rp.city                         AS city,
                     COALESCE(
                         so.marketplace_type::TEXT,
                         ''
@@ -60,6 +63,7 @@ class SaleMarketplaceReport(models.Model):
                     pt.id                           AS product_tmpl_id,
                     sol.price_unit                  AS price_unit,
                     sol.product_uom_qty             AS product_uom_qty,
+                    sol.discount                    AS discount,
                     sol.price_subtotal              AS price_subtotal,
                     so.currency_id                  AS currency_id,
                     so.company_id                   AS company_id
@@ -67,6 +71,7 @@ class SaleMarketplaceReport(models.Model):
                 JOIN sale_order so           ON so.id = sol.order_id
                 JOIN product_product pp      ON pp.id = sol.product_id
                 JOIN product_template pt     ON pt.id = pp.product_tmpl_id
+                LEFT JOIN res_partner rp     ON rp.id = so.partner_id
                 WHERE sol.display_type IS NULL
             )
         """ % self._table)

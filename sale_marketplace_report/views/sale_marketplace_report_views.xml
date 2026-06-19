@@ -21,6 +21,7 @@
                 <field name="so_id"            column_invisible="1"/>
                 <field name="order_date"       string="Order Date"/>
                 <field name="partner_id"       string="Customer"/>
+                <field name="city"             string="City"/>
                 <field name="marketplace_type" string="Marketplace"/>
                 <field name="product_id"       string="Product"/>
                 <field name="product_uom_qty"  string="Qty"/>
@@ -28,6 +29,9 @@
                 <field name="price_unit"       string="Unit Price"
                        widget="monetary"
                        options="{'currency_field': 'currency_id'}"/>
+                <field name="discount"         string="Discount (%)"
+                       widget="percentage"
+                       avg="Avg Discount"/>
                 <field name="price_subtotal"   string="Total Amount"
                        widget="monetary"
                        options="{'currency_field': 'currency_id'}"
@@ -58,6 +62,7 @@
 
                 <field name="so_name"          string="SO Number"/>
                 <field name="partner_id"       string="Customer"/>
+                <field name="city"             string="City"/>
                 <field name="product_id"       string="Product"/>
                 <field name="marketplace_type" string="Marketplace"/>
                 <field name="user_id"          string="Salesperson"/>
@@ -83,6 +88,12 @@
 
                 <separator/>
 
+                <!-- Discount quick filters -->
+                <filter string="Discounted Lines"  name="has_discount"  domain="[('discount','&gt;',0)]"/>
+                <filter string="No Discount"       name="no_discount"   domain="[('discount','=',0)]"/>
+
+                <separator/>
+
                 <filter string="This Month" name="this_month"
                         domain="[('order_date','&gt;=',(context_today()).strftime('%Y-%m-01'))]"/>
 
@@ -92,10 +103,14 @@
                             context="{'group_by': 'marketplace_type'}"/>
                     <filter string="Customer"      name="group_customer"
                             context="{'group_by': 'partner_id'}"/>
+                    <filter string="City"          name="group_city"
+                            context="{'group_by': 'city'}"/>
                     <filter string="Product"       name="group_product"
                             context="{'group_by': 'product_id'}"/>
                     <filter string="Salesperson"   name="group_salesperson"
                             context="{'group_by': 'user_id'}"/>
+                    <filter string="Discount"      name="group_discount"
+                            context="{'group_by': 'discount'}"/>
                     <filter string="Status"        name="group_state"
                             context="{'group_by': 'state'}"/>
                     <filter string="Order Date"    name="group_date"
