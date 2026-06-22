@@ -9,6 +9,7 @@ class ProductTemplate(models.Model):
     regional_language_name = fields.Char("Regional Language Name")
     is_labelling = fields.Boolean(string="Is Labelling", help="Tick this box if it is for labelling")
     is_packaging = fields.Boolean(string="Is Packaging", help="Tick this box if it is for packaging")
+    is_retail = fields.Boolean(string="Is Retail", help="Tick this box if it is retail")
 
     def action_create_reorder_point(self):
         self.ensure_one()

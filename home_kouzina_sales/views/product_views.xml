@@ -11,6 +11,7 @@
             </field>
             <xpath expr="//field[@name='lot_valuated']" position="after">
                 <field name="is_finished_good"/>
+                <field name="is_retail"/>
                 <!-- <field name="cog_before_sale"/> -->
                 <field name="regional_language_name"/>
             </xpath>
@@ -58,6 +59,7 @@
             </field>
             <xpath expr="//field[@name='lot_valuated']" position="after">
                 <field name="is_finished_good"/>
+                <field name="is_retail"/>
                 <field name="cog_before_sale"/>
                 <field name="regional_language_name"/>
             </xpath>
