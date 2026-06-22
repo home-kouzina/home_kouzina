@@ -6,13 +6,13 @@
         <field name="inherit_id" ref="odoo_multi_channel_sale.view_partner_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[@name='channel']" position="after">
-                <page name="hk_documents" string="Others">
+                <page name="hk_documents" string="Documents">
                     <group>
                         <group>
-                            <field name="cin_image" widget="image"/>
+                            <field name="cin_attachment_ids" widget="many2many_binary"/>
                         </group>
                         <group>
-                            <field name="doc_image" widget="image"/>
+                            <field name="other_attachment_ids" widget="many2many_binary"/>
                         </group>
                     </group>
                 </page>
