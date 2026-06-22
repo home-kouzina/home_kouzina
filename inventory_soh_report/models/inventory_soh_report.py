@@ -6,25 +6,11 @@ class InventorySohReport(models.Model):
     """
     Inventory SOH (Stock on Hand) Report.
 
-    SQL-view-backed read-only model.  Variance is sourced from the LATEST
-    confirmed (or reported) inventory.variation session (hk_inventory_variation
-    module) for each product, summed across all its lines.
-
-    Columns:
-        product_id          : The storable product
-        product_tmpl_id     : Product template
-        categ_id            : Internal category
-        product_type        : pt.type  ('product' / 'consu' / 'storable')
-        qty_on_hand         : Current on-hand qty  (stock.quant, internal locs)
-        qty_inward          : Total received qty    (incoming pickings, done)
-        qty_consumption     : Total delivered/used  (outgoing pickings, done, non-return)
-        qty_return          : Qty returned to vendor (outgoing returns, done)
-        qty_wastage         : Qty scrapped          (stock.scrap, done)
-        ideal_soh           : qty_on_hand + qty_inward - qty_consumption
-                              - qty_return - qty_wastage
-        variance            : SUM of variation_qty from the LATEST confirmed IVR
-                              (physical_qty - theoretical_qty per line)
-        actual_soh          : ideal_soh - variance
+    Changes:
+        - Added sku (product default_code)
+        - Renamed qty_inward label to 'Purchased Qty'
+        - Added variance_value = variance * cog_before_sale
+        - actual_soh moved before variance in view
     """
 
     _name = 'inventory.soh.report'
@@ -56,20 +42,25 @@ class InventorySohReport(models.Model):
     uom_id = fields.Many2one(
         'uom.uom', string='Unit of Measure', readonly=True)
 
+    sku = fields.Char(
+        string='SKU', readonly=True,
+        help='Internal Reference (SKU) of the product.')
+
     qty_on_hand = fields.Float(
         string='Current On Hand Qty',
         digits='Product Unit of Measure', readonly=True,
         help='Current quantity physically available in internal locations.')
 
     qty_inward = fields.Float(
-        string='Inward Qty',
+        string='Purchased Qty',
         digits='Product Unit of Measure', readonly=True,
         help='Total quantity successfully received into inventory (Receipts).')
 
     qty_consumption = fields.Float(
         string='Consumption (Used Qty)',
         digits='Product Unit of Measure', readonly=True,
-        help='Total quantity consumed / delivered out of inventory.')
+        help='Finished goods: qty delivered via Sale Orders. '
+             'Raw materials: qty consumed in Manufacturing Orders.')
 
     qty_return = fields.Float(
         string='Return Qty',
@@ -84,19 +75,29 @@ class InventorySohReport(models.Model):
     ideal_soh = fields.Float(
         string='Ideal SOH',
         digits='Product Unit of Measure', readonly=True,
-        help='Ideal SOH = On Hand + Inward - Consumption - Return - Wastage')
-
-    variance = fields.Float(
-        string='Variance',
-        digits='Product Unit of Measure', readonly=True,
-        help='Sum of variation_qty from the latest confirmed Inventory Variation '
-             'report (IVR) for this product.  '
-             'variation_qty = physical_qty - theoretical_qty per IVR line.')
+        help='Ideal SOH = On Hand + Purchased - Consumption - Return - Wastage')
 
     actual_soh = fields.Float(
         string='Actual SOH',
         digits='Product Unit of Measure', readonly=True,
         help='Actual SOH = Ideal SOH - Variance')
+
+    variance = fields.Float(
+        string='Variance',
+        digits='Product Unit of Measure', readonly=True,
+        help='Sum of variation_qty from the latest confirmed Inventory Variation '
+             'report (IVR) for this product.')
+
+    variance_value = fields.Float(
+        string='Value',
+        digits='Account', readonly=True,
+        help='Value = Variance × COG Before Sale')
+
+    product_category_type = fields.Char(
+        string='Product Category Type', readonly=True,
+        help='Finished Good or Raw Material based on is_finished_good flag.')
+
+
 
     # ── SQL View ──────────────────────────────────────────────────────────────
 
@@ -158,7 +159,6 @@ class InventorySohReport(models.Model):
                 GROUP BY sm.product_id
             ),
 
-           
             -- ─── Consumption: split by is_finished_good ──────────────────────
             --   Finished Good (is_finished_good=True)  → Sale Order deliveries
             --   Raw Material  (is_finished_good=False) → MRP component moves
@@ -213,14 +213,7 @@ class InventorySohReport(models.Model):
                 GROUP BY ss.product_id
             ),
 
-            -- ─── Latest confirmed/reported IVR per product ────────────────────
-            --
-            --  We pick the single most-recent inventory.variation session
-            --  (by date DESC, then id DESC) that is in state confirmed or reported,
-            --  and sum the variation_qty lines for each product inside that session.
-            --
-            --  variation_qty = physical_qty - theoretical_qty  (stored on the line)
-            --
+            -- ─── Latest confirmed/reported IVR ────────────────────────────────
             latest_ivr_id AS (
                 SELECT id
                 FROM inventory_variation
@@ -239,31 +232,33 @@ class InventorySohReport(models.Model):
 
             -- ─── Final SELECT ─────────────────────────────────────────────────
             SELECT
-                pp.id                                   AS id,
-                pp.id                                   AS product_id,
-                pt.id                                   AS product_tmpl_id,
+                pp.id                                       AS id,
+                pp.id                                       AS product_id,
+                pt.id                                       AS product_tmpl_id,
                 pt.categ_id,
-                pt.type                                 AS product_type,
+                pt.type                                     AS product_type,
+                CASE
+                    WHEN pp.is_finished_good = TRUE
+                    THEN 'Finished Good'
+                    ELSE 'Raw Material'
+                END                                         AS product_category_type,
                 pt.uom_id,
+                COALESCE(pp.default_code, pt.default_code)  AS sku,
 
-                COALESCE(oh.qty_on_hand,     0)         AS qty_on_hand,
-                COALESCE(iw.qty_inward,      0)         AS qty_inward,
-                COALESCE(co.qty_consumption, 0)         AS qty_consumption,
-                COALESCE(rt.qty_return,      0)         AS qty_return,
-                COALESCE(wa.qty_wastage,     0)         AS qty_wastage,
+                COALESCE(oh.qty_on_hand,     0)             AS qty_on_hand,
+                COALESCE(iw.qty_inward,      0)             AS qty_inward,
+                COALESCE(co.qty_consumption, 0)             AS qty_consumption,
+                COALESCE(rt.qty_return,      0)             AS qty_return,
+                COALESCE(wa.qty_wastage,     0)             AS qty_wastage,
 
-                -- Ideal SOH = On Hand + Inward - Consumption - Return - Wastage
+                -- Ideal SOH = On Hand + Purchased - Consumption - Return - Wastage
                 (
                     COALESCE(oh.qty_on_hand,     0)
                   + COALESCE(iw.qty_inward,      0)
                   - COALESCE(co.qty_consumption, 0)
                   - COALESCE(rt.qty_return,      0)
                   - COALESCE(wa.qty_wastage,     0)
-                )                                       AS ideal_soh,
-
-                -- Variance from latest confirmed IVR
-                -- (positive = physical was MORE than system; negative = less)
-                COALESCE(iv.variance, 0)                AS variance,
+                )                                           AS ideal_soh,
 
                 -- Actual SOH = Ideal SOH - Variance
                 (
@@ -273,7 +268,14 @@ class InventorySohReport(models.Model):
                   - COALESCE(rt.qty_return,      0)
                   - COALESCE(wa.qty_wastage,     0)
                   - COALESCE(iv.variance,        0)
-                )                                       AS actual_soh
+                )                                           AS actual_soh,
+
+                -- Variance from latest confirmed IVR
+                COALESCE(iv.variance, 0)                    AS variance,
+
+                -- Value = Variance × COG Before Sale
+                COALESCE(iv.variance, 0)
+                    * COALESCE(pp.cog_before_sale, 0)       AS variance_value
 
             FROM product_product pp
             JOIN product_template pt ON pt.id = pp.product_tmpl_id

@@ -21,10 +21,15 @@
                 <field name="date_order" string="Order Date" optional="hide"/>
 
                 <!-- ── Product ── -->
-                <field name="product_id" string="Product" optional="show"/>
                 <field name="sku" string="SKU" optional="show"/>
+                <field name="product_id" string="Product" optional="show"/>
                 <field name="lot_numbers" string="Lot/Serial No" widget="lot_pills" optional="hide"/>
                 <field name="categ_id" string="Category" optional="hide"/>
+                <field name="product_category_type"
+                       string="Types of Goods"
+                       optional="show"
+                       decoration-success="product_category_type == 'Finished Good'"
+                       decoration-warning="product_category_type == 'Raw Material'"/>
                 <field name="product_uom" string="UoM" optional="hide"/>
 
                 <!-- ── Vendor ── -->
@@ -157,16 +162,16 @@
                 ══════════════════════════════ -->
                 <filter name="filter_today"
                         string="Today"
-                        domain="[('date_order','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('date_order_raw','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('date_order_raw','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <filter name="filter_this_month"
                         string="This Month"
-                        domain="[('date_order','&gt;=', context_today().strftime('%Y-%m-01 00:00:00')),
-                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('date_order_raw','&gt;=', context_today().strftime('%Y-%m-01 00:00:00')),
+                                ('date_order_raw','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
                 <filter name="filter_this_year"
                         string="This Year"
-                        domain="[('date_order','&gt;=', context_today().strftime('%Y-01-01 00:00:00')),
-                                 ('date_order','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('date_order_raw','&gt;=', context_today().strftime('%Y-01-01 00:00:00')),
+                                ('date_order_raw','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
 
                 <separator/>
 
@@ -175,12 +180,13 @@
                 ══════════════════════════════ -->
                 <filter name="filter_overdue"
                         string="Overdue (Scheduled)"
-                        domain="[('date_planned','&lt;', context_today().strftime('%Y-%m-%d 00:00:00')),
-                                 ('receipt_status','=','to receive')]"/>
+                        domain="[('date_planned_raw','&lt;', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('receipt_status','=','to receive')]"/>
                 <filter name="filter_due_today_scheduled"
                         string="Due Today (Scheduled)"
-                        domain="[('date_planned','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
-                                 ('date_planned','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+                        domain="[('date_planned_raw','&gt;=', context_today().strftime('%Y-%m-%d 00:00:00')),
+                                ('date_planned_raw','&lt;=', context_today().strftime('%Y-%m-%d 23:59:59'))]"/>
+
 
                 <separator/>
 
@@ -188,9 +194,9 @@
                      PERIOD PICKERS (built-in Odoo 18 date widget —
                      covers Day / Week / Month / Quarter / Year)
                 ══════════════════════════════ -->
-                <filter name="filter_date_order" string="Order Date" date="date_order"/>
-                <filter name="filter_date_approve" string="Confirmation Date" date="date_approve"/>
-                <filter name="filter_date_planned" string="Scheduled Date" date="date_planned"/>
+                <filter name="filter_date_order"   string="Order Date"        date="date_order_raw"/>
+                <filter name="filter_date_approve" string="Confirmation Date" date="date_approve_raw"/>
+                <filter name="filter_date_planned" string="Scheduled Date"    date="date_planned_raw"/>
 
                 <separator/>
 
@@ -234,7 +240,7 @@
                             groups="base.group_multi_company"/>
                     <filter name="groupby_date_order"
                             string="Order Date"
-                            context="{'group_by': 'date_order'}"/>
+                            context="{'group_by': 'date_order_raw'}"/>
                 </group>
 
             </search>

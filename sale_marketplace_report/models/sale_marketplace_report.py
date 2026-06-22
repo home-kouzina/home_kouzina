@@ -19,6 +19,7 @@ class SaleMarketplaceReport(models.Model):
         ('cancel', 'Cancelled'),
     ], string='Status', readonly=True)
     order_date = fields.Datetime(string='Order Date', readonly=True)
+    order_date_only = fields.Char(string='Order Date', readonly=True)
 
     # Customer & Salesperson
     partner_id = fields.Many2one('res.partner', string='Customer', readonly=True)
@@ -27,6 +28,10 @@ class SaleMarketplaceReport(models.Model):
 
     # Marketplace
     marketplace_type = fields.Char(string='Marketplace', readonly=True)
+    #sku 
+    sku = fields.Char(
+        string='SKU', readonly=True,
+        help='Internal Reference (SKU) of the product.')
 
     # Product line fields
     sol_id = fields.Integer(string='Line ID', readonly=True)
@@ -52,6 +57,7 @@ class SaleMarketplaceReport(models.Model):
                     so.name                         AS so_name,
                     so.state                        AS state,
                     so.date_order                   AS order_date,
+                    TO_CHAR(so.date_order, 'DD/MM/YYYY')  AS order_date_only,
                     so.partner_id                   AS partner_id,
                     so.user_id                      AS user_id,
                     rp.city                         AS city,
@@ -61,6 +67,7 @@ class SaleMarketplaceReport(models.Model):
                     )                               AS marketplace_type,
                     sol.product_id                  AS product_id,
                     pt.id                           AS product_tmpl_id,
+                    COALESCE(pp.default_code, pt.default_code, '')  AS sku,
                     sol.price_unit                  AS price_unit,
                     sol.product_uom_qty             AS product_uom_qty,
                     sol.discount                    AS discount,

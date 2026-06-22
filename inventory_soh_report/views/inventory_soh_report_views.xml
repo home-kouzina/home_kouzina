@@ -10,6 +10,7 @@
 
                 <field name="product_id" string="Product"
                        filter_domain="[('product_id.name', 'ilike', self)]"/>
+                <field name="sku" string="SKU"/>
                 <field name="product_type" string="Product Type"/>
                 <field name="categ_id" string="Category"/>
 
@@ -43,9 +44,6 @@
                     <filter string="Product Category"
                             name="groupby_categ"
                             context="{'group_by': 'categ_id'}"/>
-                    <filter string="Unit of Measure"
-                            name="groupby_uom"
-                            context="{'group_by': 'uom_id'}"/>
                 </group>
 
             </search>
@@ -63,6 +61,10 @@
                   edit="false"
                   delete="false"
                   default_order="product_id asc">
+                
+                <field name="sku"
+                       string="SKU"
+                       optional="show"/>
 
                 <field name="product_id"
                        string="Product"
@@ -76,6 +78,12 @@
                        string="Product Type"
                        optional="show"/>
 
+                <field name="product_category_type"
+                       string="Types of Goods"
+                       optional="show"
+                       decoration-success="product_category_type == 'Finished Good'"
+                       decoration-warning="product_category_type == 'Raw Material'"/>
+
                 <field name="uom_id"
                        string="UoM"
                        optional="hide"/>
@@ -88,9 +96,9 @@
                        sum="Total On Hand"/>
 
                 <field name="qty_inward"
-                       string="Inward Qty"
+                       string="Purchased Qty"
                        optional="show"
-                       sum="Total Inward"/>
+                       sum="Total Purchased"/>
 
                 <field name="qty_consumption"
                        string="Consumption"
@@ -113,6 +121,13 @@
                        optional="show"
                        sum="Total Ideal SOH"/>
 
+                <field name="actual_soh"
+                       string="Actual SOH"
+                       optional="show"
+                       decoration-danger="actual_soh &lt; 0"
+                       decoration-success="actual_soh &gt;= 0"
+                       sum="Total Actual SOH"/>
+
                 <field name="variance"
                        string="Variance"
                        optional="show"
@@ -120,12 +135,12 @@
                        decoration-muted="variance == 0"
                        sum="Total Variance"/>
 
-                <field name="actual_soh"
-                       string="Actual SOH"
+                <field name="variance_value"
+                       string="Value"
                        optional="show"
-                       decoration-danger="actual_soh &lt; 0"
-                       decoration-success="actual_soh &gt;= 0"
-                       sum="Total Actual SOH"/>
+                       decoration-danger="variance_value &gt; 0"
+                       decoration-muted="variance_value == 0"
+                       sum="Total Value"/>
 
             </list>
         </field>
@@ -146,8 +161,8 @@
             </p>
             <p>
                 This report shows a consolidated view of your inventory including
-                on-hand stock, inward receipts, consumption, returns, wastage,
-                ideal and actual stock on hand, and any variance.
+                on-hand stock, purchased qty, consumption, returns, wastage,
+                ideal SOH, actual SOH, variance and variance value.
             </p>
         </field>
     </record>
