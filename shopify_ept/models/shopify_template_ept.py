@@ -755,7 +755,7 @@ class ShopifyProductTemplateEpt(models.Model):
                 shopify_attribute_name = shopify_attribute.get("name")
 
                 attribute_line = odoo_attribute_lines.filtered(
-                    lambda x: x.attribute_id.name == shopify_attribute_name
+                    lambda x: x.display_name == shopify_attribute_name
                 )
 
                 if not attribute_line:
