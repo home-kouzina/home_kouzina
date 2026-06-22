@@ -19,11 +19,12 @@
 
                 <field name="so_name"          string="SO Number" widget="char"/>
                 <field name="so_id"            column_invisible="1"/>
-                <field name="order_date"       string="Order Date"/>
+                <field name="order_date_only" string="Order Date"/>
                 <field name="partner_id"       string="Customer"/>
                 <field name="city"             string="City"/>
                 <field name="marketplace_type" string="Marketplace"/>
                 <field name="product_id"       string="Product"/>
+                <field name="sku"              string="SKU"/>
                 <field name="product_uom_qty"  string="Qty"/>
                 <field name="currency_id"      column_invisible="1"/>
                 <field name="price_unit"       string="Unit Price"
@@ -64,6 +65,7 @@
                 <field name="partner_id"       string="Customer"/>
                 <field name="city"             string="City"/>
                 <field name="product_id"       string="Product"/>
+                <field name="sku"              string="SKU"/>
                 <field name="marketplace_type" string="Marketplace"/>
                 <field name="user_id"          string="Salesperson"/>
 
@@ -96,6 +98,8 @@
 
                 <filter string="This Month" name="this_month"
                         domain="[('order_date','&gt;=',(context_today()).strftime('%Y-%m-01'))]"/>
+                <filter string="Order Date" name="group_date"
+                        context="{'group_by': 'order_date:month'}"/>
 
                 <!-- Group By -->
                 <group expand="0" string="Group By">
@@ -113,8 +117,8 @@
                             context="{'group_by': 'discount'}"/>
                     <filter string="Status"        name="group_state"
                             context="{'group_by': 'state'}"/>
-                    <filter string="Order Date"    name="group_date"
-                            context="{'group_by': 'order_date:month'}"/>
+                    <filter string="Order Date" name="group_date"
+                            context="{'group_by': 'order_date_only'}"/>
                     <filter string="Company"       name="group_company"
                             context="{'group_by': 'company_id'}"
                             groups="base.group_multi_company"/>

@@ -42,9 +42,13 @@ class HKPurchaseReport(models.Model):
     price_total = fields.Monetary(string='Total', currency_field='currency_id', readonly=True)
 
     # ── Dates ─────────────────────────────────────────────────────
-    date_order = fields.Datetime(string='Order Date', readonly=True)
-    date_approve = fields.Datetime(string='Confirmation Date', readonly=True)
-    date_planned = fields.Datetime(string='Scheduled Date', readonly=True)
+    date_order = fields.Char(string='Order Date', readonly=True)
+    date_approve = fields.Char(string='Confirmation Date', readonly=True)
+    date_planned = fields.Char(string='Scheduled Date', readonly=True)
+
+    date_order_raw   = fields.Datetime(string='Order Date (raw)',   readonly=True)
+    date_approve_raw = fields.Datetime(string='Confirm Date (raw)', readonly=True)
+    date_planned_raw = fields.Datetime(string='Scheduled Date (raw)', readonly=True)
 
     # ── Status ────────────────────────────────────────────────────
     state = fields.Selection([
@@ -70,6 +74,11 @@ class HKPurchaseReport(models.Model):
         ('invoiced', 'Fully Billed'),
     ], string='Billing Status', readonly=True)
 
+    # new field for the product type
+    product_category_type = fields.Char(
+        string='Product Category Type', readonly=True,
+        help='Finished Good or Raw Material based on is_finished_good flag.')
+
     # ────────────────────────────────────────────────────────────────
     # SQL VIEW
     # ────────────────────────────────────────────────────────────────
@@ -87,6 +96,11 @@ class HKPurchaseReport(models.Model):
                     COALESCE(pp.default_code, pt.default_code, '')  AS sku,
                     pt.categ_id                                     AS categ_id,
                     lots.lot_numbers                                AS lot_numbers,
+                    CASE
+                        WHEN pp.is_finished_good = TRUE
+                        THEN 'Finished Good'
+                        ELSE 'Raw Material'
+                    END                                         AS product_category_type,
 
                     po.partner_id                                   AS partner_id,
                     po.user_id                                      AS user_id,
@@ -106,9 +120,14 @@ class HKPurchaseReport(models.Model):
                     pol.price_tax                                   AS price_tax,
                     pol.price_total                                 AS price_total,
 
-                    po.date_order                                   AS date_order,
-                    po.date_approve                                 AS date_approve,
-                    pol.date_planned                                AS date_planned,
+                    
+                    TO_CHAR(po.date_order,   'DD/MM/YYYY')          AS date_order,
+                    TO_CHAR(po.date_approve, 'DD/MM/YYYY')          AS date_approve,
+                    TO_CHAR(pol.date_planned,'DD/MM/YYYY')          AS date_planned,
+                    
+                    po.date_order                                   AS date_order_raw,
+                    po.date_approve                                 AS date_approve_raw,
+                    pol.date_planned                                AS date_planned_raw,
 
                     po.state                                        AS state,
 
