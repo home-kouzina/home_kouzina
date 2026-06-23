@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem
+        id="menu_sale_margin_report"
+        name="Margin Report"
+        parent="sale.menu_sale_report"
+        action="action_sale_margin_report"
+        sequence="26"
+        groups="sales_team.group_sale_salesman"/>
+</odoo>
