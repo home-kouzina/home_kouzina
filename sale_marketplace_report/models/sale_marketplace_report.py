@@ -70,7 +70,7 @@ class SaleMarketplaceReport(models.Model):
                     COALESCE(pp.default_code, pt.default_code, '')  AS sku,
                     sol.price_unit                  AS price_unit,
                     sol.product_uom_qty             AS product_uom_qty,
-                    sol.discount                    AS discount,
+                    sol.discount/100.0              AS discount,
                     sol.price_subtotal              AS price_subtotal,
                     so.currency_id                  AS currency_id,
                     so.company_id                   AS company_id

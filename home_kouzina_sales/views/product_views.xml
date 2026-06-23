@@ -12,9 +12,14 @@
             <xpath expr="//field[@name='lot_valuated']" position="after">
                 <field name="is_finished_good"/>
                 <field name="is_retail"/>
+                <field name="is_consumable"/>
                 <!-- <field name="cog_before_sale"/> -->
                 <field name="regional_language_name"/>
             </xpath>
+
+
+            
+            
             <xpath expr="//header/button" position="before">
                   <button name="action_create_reorder_point"
                     type="object"
