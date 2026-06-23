@@ -34,11 +34,11 @@ class MarketplaceOrderImportWizard(models.TransientModel):
     report_filename = fields.Char(string='Report Filename')
 
     DEFAULT_EXPECTED_HEADERS = [
-        'marketplace_order_id', 'marketplace_type_excel', 'customer_email', 'customer_name',
-        'customer_street', 'customer_city', 'customer_zip',
-        'order_date', 'product_sku', 'quantity', 'unit_price',
-        'order_line_note', 'marketplace_invoice_number',
-        'marketplace_invoice_type', 'marketplace_sale_state', 'marketplace_hsn_code'
+        'marketplace_order_id', 'customer_name',
+        # REMOVED: 'marketplace_type_excel', 'customer_street', 'customer_city', 'customer_zip',
+        # 'order_date', 'product_sku', 'quantity', 'unit_price', 'order_line_note',
+        # 'marketplace_invoice_type', 'marketplace_sale_state', 'marketplace_hsn_code'
+        # — these columns are now optional; only customer_name and marketplace_order_id are mandatory
     ]
 
     HEADER_MAP = {
@@ -53,7 +53,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'HSN Code': 'marketplace_hsn_code',
         'Marketplace HSN Code': 'marketplace_hsn_code',
         'Item ID': 'marketplace_item_id',
-        'Customer Email': 'customer_email',
+        'Customer Email': 'customer_email',  # Mapping kept intentionally — if email column exists in sheet, it will still be read without error
         'Customer Name': 'customer_name',
         'Customer Street': 'customer_street',
         'Customer City': 'customer_city',
@@ -68,10 +68,13 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Order Date': 'order_date',
         'Product SKU': 'product_sku',
         'Product Name': 'product_name',
+        'EAN No.': 'ean',
         'Quantity': 'quantity',
         'Unit Price': 'unit_price',
         'Order Line Note': 'order_line_note',
-        'Tax Percent': 'tax_percent',
+        'IGST %': 'igst_percent',
+        'CGST %': 'cgst_percent',
+        'SGST %': 'sgst_percent',
         'Shipping Amount': 'shipping_amount',
         'Currency': 'currency',
         'Order Tag': 'order_tag',
@@ -79,7 +82,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Marketplace Order Date': 'marketplace_order_date',
         'Payment Status': 'marketplace_payment_status',
         'Order Status': 'marketplace_order_status',
-        'Delivery Slot': 'marketplace_delivery_slot',
+        # REMOVED: 'Delivery Slot' mapping — marketplace_delivery_slot field has been removed
         'Total Amount': 'marketplace_total_amount',
         'Flipkart Order ID': 'marketplace_order_ref',
         'Flipkart Order Date': 'marketplace_order_date',
@@ -93,7 +96,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Amazon Total Amount': 'marketplace_total_amount',
         'Blinkit Order ID': 'marketplace_order_ref',
         'Blinkit Order Date': 'marketplace_order_date',
-        'Blinkit Delivery Slot': 'marketplace_delivery_slot',
+        # REMOVED: 'Blinkit Delivery Slot' mapping — marketplace_delivery_slot field has been removed
         'Blinkit Payment Status': 'marketplace_payment_status',
         'Blinkit Order Status': 'marketplace_order_status',
         'Blinkit Total Amount': 'marketplace_total_amount',
@@ -102,7 +105,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Shopify Payment Status': 'marketplace_payment_status',
         'Shopify Order Status': 'marketplace_order_status',
         'Shopify Total Amount': 'marketplace_total_amount',
-        'Invoice Number': 'marketplace_invoice_number',
+        # REMOVED: 'Invoice Number' mapping — marketplace_invoice_number field has been removed
         'Invoice Type': 'marketplace_invoice_type',
         'State of Sale': 'marketplace_sale_state',
         'Payment Terms': 'payment_term_name',
@@ -145,69 +148,64 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             errors.append('Missing marketplace_order_id')
 
         order_date = row.get('order_date')
-        if not order_date:
-            errors.append('Missing order_date')
-        elif not isinstance(order_date, (datetime, str)):
-            errors.append('order_date must be a valid date or string format')
-        elif isinstance(order_date, str):
-            try:
-                datetime.fromisoformat(order_date.replace('Z', ''))
-            except ValueError:
+        if order_date:
+            if not isinstance(order_date, (datetime, str)):
+                errors.append('order_date must be a valid date or string format')
+            elif isinstance(order_date, str):
                 try:
-                    datetime.strptime(order_date, '%Y-%m-%d')
+                    datetime.fromisoformat(order_date.replace('Z', ''))
                 except ValueError:
-                    errors.append('order_date must be in YYYY-MM-DD format')
+                    try:
+                        datetime.strptime(order_date, '%Y-%m-%d')
+                    except ValueError:
+                        errors.append('order_date must be in YYYY-MM-DD format')
         return errors
 
     def _validate_customer_fields(self, row):
         errors = []
         if not row.get('customer_name'):
             errors.append('Missing customer_name')
-        customer_email = row.get('customer_email')
-        if not customer_email:
-            errors.append('Missing customer_email')
-        elif isinstance(customer_email, str) and '@' not in customer_email:
-            errors.append('Invalid email format')
+        # REMOVED: customer_email validation — email is no longer a required field
+        # Previously checked: Missing customer_email and invalid email format
         return errors
 
     def _validate_address_fields(self, row):
         errors = []
-        for field in ['customer_street', 'customer_city', 'customer_state']:
-            if not row.get(field):
-                errors.append(f"Missing {field}")
+        # REMOVED: mandatory checks for customer_street, customer_city, customer_state — now optional
         customer_zip = row.get('customer_zip')
-        if not customer_zip:
-            errors.append('Missing customer_zip')
-        elif not str(customer_zip).strip().isdigit():
+        if customer_zip and not str(customer_zip).strip().isdigit():
             errors.append('customer_zip must be numeric')
         return errors
 
     def _validate_product_fields(self, row):
         errors = []
         product_sku = str(row.get('product_sku') or '').strip()
-        if not product_sku:
-            errors.append('Missing product_sku')
-        else:
-            product = self.env['product.product'].search([
-                '|', ('default_code', '=', product_sku), ('barcode', '=', product_sku)
-            ], limit=1)
+        ean = str(row.get('ean') or '').strip()
+        if product_sku or ean:
+            if product_sku and ean:
+                domain = ['|', '|', ('default_code', '=', product_sku), ('barcode', '=', product_sku), ('barcode', '=', ean)]
+            elif product_sku:
+                domain = ['|', ('default_code', '=', product_sku), ('barcode', '=', product_sku)]
+            else:
+                domain = [('barcode', '=', ean)]
+            product = self.env['product.product'].search(domain, limit=1)
             if not product:
-                errors.append(f"Product with SKU/Barcode '{product_sku}' not found")
+                errors.append(f"Product with SKU/Barcode '{product_sku or ean}' not found")
+        # REMOVED: mandatory check for product_sku/ean — now optional
 
         quantity = row.get('quantity')
-        if quantity in (None, ''):
-            errors.append('Missing quantity')
-        else:
+        if quantity not in (None, ''):
             try:
                 if float(quantity) <= 0:
                     errors.append('quantity must be greater than 0')
             except ValueError:
                 errors.append('quantity must be a number')
+        # REMOVED: mandatory check for quantity — now optional, defaults to 1 during processing
         return errors
 
     def _validate_pricing_fields(self, row):
         errors = []
-        for field in ['unit_price', 'tax_percent', 'shipping_amount']:
+        for field in ['unit_price', 'igst_percent', 'cgst_percent', 'sgst_percent', 'shipping_amount']:
             val = row.get(field)
             if val not in (None, ''):
                 try:
@@ -219,8 +217,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
     def _validate_misc_fields(self, row):
         errors = []
-        if not row.get('currency'):
-            errors.append('Missing currency')
+        # REMOVED: mandatory check for currency — now optional
         return errors
 
     def _validate_csv_injection(self, row):
@@ -252,7 +249,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             headers_list.append('Error')
 
         parsed_rows = []
-        has_error = False
+        valid_rows = []
 
         for idx, raw in enumerate(data_rows, start=1):
             row = {k: (v if v is not None else '') for k, v in raw.items()}
@@ -261,21 +258,13 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
             if row_error:
                 row['Status'] = 'Failed'
-                has_error = True
                 self._log_failure(idx, row_error)
             else:
                 row['Status'] = 'Success'
+                valid_rows.append((idx, row))
             parsed_rows.append(row)
 
-        if has_error:
-            self._generate_report_file(headers_list, parsed_rows)
-            return {
-                'type': 'ir.actions.act_url',
-                'url': f'/web/content/?model=marketplace.order.import.wizard&field=report_file&id={self.id}&filename={self.report_filename}&download=true',
-                'target': 'new',
-            }
-
-        grouped = self._group_rows_by_order(parsed_rows)
+        grouped = self._group_rows_by_order(valid_rows, already_indexed=True)
         created_orders = []
         failed_rows = []
 
@@ -298,7 +287,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         final_rows = self._attach_log_messages_to_rows(parsed_rows)
         self._generate_report_file(headers_list, final_rows, created_orders=created_orders)
 
-        if failed_rows:
+        if failed_rows or any(r.get('Status') == 'Failed' for r in parsed_rows):
             return {
                 'type': 'ir.actions.act_url',
                 'url': f'/web/content/?model=marketplace.order.import.wizard&field=report_file&id={self.id}&filename={self.report_filename}&download=true',
@@ -311,6 +300,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             'params': {
                 'message': f"Successfully imported mixed marketplace entries! Created {len(created_orders)} orders."}
         }
+
 
     def _read_xlsx(self):
         if not self.xlsx_file:
@@ -343,9 +333,10 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         return [h for h in expected if h.lower() not in lower_headers]
 
     # --- CHANGED: Group by BOTH Order ID and Row Marketplace Record ---
-    def _group_rows_by_order(self, parsed_rows):
+    # --- CHANGED: Now accepts pre-indexed (idx, row) tuples since failed rows are filtered out before grouping ---
+    def _group_rows_by_order(self, indexed_rows, already_indexed=False):
         groups = {}
-        for idx, row in enumerate(parsed_rows, start=1):
+        for idx, row in indexed_rows:
             mid = str(row.get('marketplace_order_id') or '').strip()
             m_type = str(row.get('marketplace_type_excel') or '').strip()
 
@@ -417,7 +408,9 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
         marketplace_fields = [
             'marketplace_order_date', 'marketplace_payment_status', 'marketplace_order_status',
-            'marketplace_delivery_slot', 'marketplace_total_amount', 'marketplace_invoice_number',
+            # REMOVED: 'marketplace_delivery_slot' — delivery slot field has been removed
+            'marketplace_total_amount',
+            # REMOVED: 'marketplace_invoice_number' — invoice number field has been removed
             'marketplace_invoice_type', 'marketplace_sale_state', 'marketplace_hsn_code', 'marketplace_item_id'
         ]
         for fld in marketplace_fields:
@@ -428,12 +421,17 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
         for idx, row in rows:
             sku = str(row.get('product_sku') or '').strip()
-            product = self.env['product.product'].search([
-                '|', ('default_code', '=', sku), ('barcode', '=', sku)
-            ], limit=1)
+            ean = str(row.get('ean') or '').strip()
+            if sku and ean:
+                product_domain = ['|', '|', ('default_code', '=', sku), ('barcode', '=', sku), ('barcode', '=', ean)]
+            elif sku:
+                product_domain = ['|', ('default_code', '=', sku), ('barcode', '=', sku)]
+            else:
+                product_domain = [('barcode', '=', ean)]
+            product = self.env['product.product'].search(product_domain, limit=1)
 
             if not product:
-                msg = f"Product SKU {sku} extraction failed."
+                msg = f"Product SKU {sku or ean} extraction failed."
                 self._log_failure(idx, msg)
                 failed_rows.append((idx, msg))
                 continue
@@ -455,22 +453,33 @@ class MarketplaceOrderImportWizard(models.TransientModel):
                 'name': row.get('order_line_note') or product.name,
             }
 
-            tax_percent = row.get('tax_percent')
-            if tax_percent not in (None, ''):
+            tax_ids = []
+            for tax_label, field_name in (('IGST', 'igst_percent'), ('CGST', 'cgst_percent'), ('SGST', 'sgst_percent')):
+                tax_val = row.get(field_name)
+                if tax_val in (None, ''):
+                    continue
                 try:
-                    t_pct = float(tax_percent)
-                    tax = self.env['account.tax'].search([('amount', '=', t_pct), ('type_tax_use', '=', 'sale')],
-                                                         limit=1)
-                    if not tax:
-                        tax = self.env['account.tax'].create({
-                            'name': f"{int(t_pct)}% VAT",
-                            'amount': t_pct,
-                            'type_tax_use': 'sale',
-                            'amount_type': 'percent',
-                        })
-                    line_vals['tax_id'] = [(6, 0, [tax.id])]
-                except Exception:
-                    pass
+                    t_pct = float(tax_val)
+                except (TypeError, ValueError):
+                    continue
+                if t_pct <= 0:
+                    continue
+                tax = self.env['account.tax'].search([
+                    ('name', '=ilike', f'%{tax_label}%'),
+                    ('amount', '=', t_pct),
+                    ('type_tax_use', '=', 'sale'),
+                ], limit=1)
+                if not tax:
+                    tax = self.env['account.tax'].create({
+                        'name': f"{tax_label} {int(t_pct) if t_pct == int(t_pct) else t_pct}%",
+                        'amount': t_pct,
+                        'type_tax_use': 'sale',
+                        'amount_type': 'percent',
+                    })
+                tax_ids.append(tax.id)
+
+            if tax_ids:
+                line_vals['tax_id'] = [(6, 0, tax_ids)]
 
             self.env['sale.order.line'].create(line_vals)
 
@@ -498,13 +507,11 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             limit=1)
 
     def _resolve_customer(self, first_row):
-        email = str(first_row.get('customer_email') or '').strip()
+        # REMOVED: email variable and email-based customer search — customer_email field has been removed
         name = str(first_row.get('customer_name') or '').strip()
 
         customer = None
-        if email:
-            customer = self.env['res.partner'].search([('email', '=', email)], limit=1)
-        if not customer and name:
+        if name:
             customer = self.env['res.partner'].search([('name', '=', name)], limit=1)
 
         if not customer and self.create_customer_if_missing:
@@ -512,8 +519,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             state_record = self._resolve_state(first_row, country_record)
 
             partner_vals = {
-                'name': name or email or 'Unknown Customer',
-                'email': email or False,
+                'name': name or 'Unknown Customer',  # REMOVED: email fallback ('name or email or Unknown Customer') since email is no longer available
+                # REMOVED: 'email' key from partner_vals — customer_email field has been removed
                 'street': first_row.get('customer_street') or False,
                 'city': first_row.get('customer_city') or False,
                 'zip': first_row.get('customer_zip') or False,
