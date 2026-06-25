@@ -30,9 +30,10 @@
                 <field name="price_unit"       string="Unit Price"
                        widget="monetary"
                        options="{'currency_field': 'currency_id'}"/>
-                <field name="discount"         string="Discount (%)"
-                       widget="percentage"
-                       avg="Avg Discount"/>
+                <field name="discount"         string="Discount Amount"
+                       widget="monetary"
+                       options="{'currency_field': 'currency_id'}"
+                       sum="Total Discount"/>
                 <field name="price_subtotal"   string="Total Amount"
                        widget="monetary"
                        options="{'currency_field': 'currency_id'}"

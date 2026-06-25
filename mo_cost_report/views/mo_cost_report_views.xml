@@ -14,6 +14,7 @@
                   decoration-muted="state == 'draft'"
                   decoration-danger="state == 'cancel'">
                 <field name="mo_name" string="MO Number"/>
+                <field name="date_start" string="Scheduled Date" optional="show"/>
                 <field name="product_id" string="Product"/>
                 <field name="sku_code" string="SKU" optional="show"/>
                 <field name="lot_producing_id" string="Lot/Serial Number" optional="show"/>
@@ -24,7 +25,7 @@
                     decoration-info="state in ('confirmed', 'progress', 'to_close')"
                     decoration-muted="state == 'cancel'"
                     optional="show"/>
-                <field name="date_start" string="Scheduled Date" optional="show"/>
+                
                 <field name="requested_by_id" string="Requested By"/>
                 <field name="approved_by_id" string="Approved By"/>
                 <field name="currency_id" column_invisible="1"/>
@@ -81,7 +82,7 @@
 
     <!-- Action -->
     <record id="action_mo_cost_report" model="ir.actions.act_window">
-        <field name="name">MO Consolidate Report</field>
+        <field name="name">Production Report</field>
         <field name="res_model">mo.cost.report</field>
         <field name="view_mode">list</field>
         <field name="view_id" ref="view_mo_cost_report_list"/>
