@@ -325,35 +325,24 @@ class InventoryVariation(models.Model):
                 line     = self._get_or_create_variation_line(product, location)
                 old_phys = line.physical_qty
                 line.write({'physical_qty': physical_qty})
+
                 success_rows += 1
-                update_ok = True
+                self._create_upload_log(
+                    row_idx,
+                    self._product_display_name(product),
+                    location.complete_name,
+                    physical_qty,
+                    'success',
+                    _('Physical Qty updated from %.3f to %.3f.') % (old_phys, physical_qty),
+                    product_id=product.id, location_id=location.id,
+                    old_qty=old_phys, new_qty=physical_qty,
+                )
             except Exception as e:
-                update_ok = False
                 failed_rows += 1
                 msg = str(e)
                 error_rows.append([row_idx, product_raw, location_raw, physical_qty, msg])
-
-            if update_ok:
-                try:
-                    self._create_upload_log(
-                        row_idx,
-                        self._product_display_name(product),
-                        location.complete_name,
-                        physical_qty,
-                        'success',
-                        _('Physical Qty updated from %.3f to %.3f.') % (old_phys, physical_qty),
-                        product_id=product.id, location_id=location.id,
-                        old_qty=old_phys, new_qty=physical_qty,
-                    )
-                except Exception:
-                    pass
-            else:
-                try:
-                    self._create_upload_log(row_idx, product_raw, location_raw,
-                                            physical_qty, 'failed', msg)
-                except Exception:
-                    pass
-# This separates the counting logic from the logging logic so a log write failure can never corrupt the success/failed counters.
+                self._create_upload_log(row_idx, product_raw, location_raw,
+                                        physical_qty, 'failed', msg)
 
         if error_rows:
             self._generate_upload_error_report(error_rows)
@@ -376,7 +365,7 @@ class InventoryVariation(models.Model):
             'params': {
                 'title':   _('Upload Complete'),
                 'message': summary,
-                'sticky':  True,
+                'sticky':  False,
                 'type':    'success' if not failed_rows else 'warning',
                 'next':    {'type': 'ir.actions.client', 'tag': 'reload'},
             },
@@ -506,6 +495,67 @@ class InventoryVariation(models.Model):
             'type': 'ir.actions.act_url',
             'url':  self._get_binary_download_url('error_file', 'error_filename'),
             'target': 'self',
+        }
+
+    # ------------------------------------------------------------------
+    # Override Load Products to pre-fill physical_qty from last IVR
+    # ------------------------------------------------------------------
+
+    def action_load_products(self):
+        """
+        Calls the original Load Products, then back-fills physical_qty on
+        every line from the most recently confirmed IVR session that has a
+        line for the same (product, location).
+
+        This means when a user opens a new IVR and clicks Load Products,
+        the Physical Qty column already shows the last recorded physical
+        count instead of 0.
+        """
+        # Run the original logic first (builds all lines with physical_qty=0)
+        result = super().action_load_products()
+
+        # Build a lookup: (product_id, location_id) -> physical_qty
+        # from the most recently confirmed IVR (excluding the current one)
+        last_physical = self._get_last_confirmed_physical_qtys()
+
+        if last_physical:
+            for line in self.line_ids:
+                key = (line.product_id.id, line.location_id.id)
+                if key in last_physical:
+                    line.physical_qty = last_physical[key]
+
+            # Recompute variation after updating physical qtys
+            self.line_ids._compute_variation_qty()
+
+        return result
+
+    def _get_last_confirmed_physical_qtys(self):
+        """
+        Returns a dict of {(product_id, location_id): physical_qty} from
+        the most recent confirmed/reported IVR session (other than self)
+        that shares at least one of the same warehouses.
+        """
+        # Find the latest confirmed IVR for the same warehouses
+        domain = [
+            ('id', '!=', self.id),
+            ('state', 'in', ('confirmed', 'reported')),
+        ]
+        if self.warehouse_ids:
+            domain += [('warehouse_ids', 'in', self.warehouse_ids.ids)]
+
+        last_ivr = self.env['inventory.variation'].search(
+            domain,
+            order='id desc',
+            limit=1,
+        )
+
+        if not last_ivr:
+            return {}
+
+        return {
+            (line.product_id.id, line.location_id.id): line.physical_qty
+            for line in last_ivr.line_ids
+            if line.physical_qty != 0.0
         }
 
 
