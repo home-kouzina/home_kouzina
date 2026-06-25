@@ -5,12 +5,16 @@
         <field name="model">mrp.production</field>
         <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
         <field name="arch" type="xml">
+            <xpath expr="//form/header/field[@name='state']" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </xpath>
             <xpath expr="//form/header" position="inside">
                 <field name="show_auto_assign_finished_lot" invisible="1"/>
                 <field name="is_manufacture_approver" invisible="1"/>
-                <field name="approval_status"
+                <field name="approval_status" invisible="1"/>
+                <field name="mo_status_bar"
                        widget="statusbar"
-                       statusbar_visible="draft,pending,approved"/>
+                       statusbar_visible="draft,pending,approved,confirmed,done"/>
                 <button name="action_auto_assign_finished_lot"
                         type="object"
                         string="Assign Finished Lot"
