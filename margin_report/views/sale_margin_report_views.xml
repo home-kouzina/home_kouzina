@@ -7,17 +7,38 @@
             <search string="Margin Report">
                 <field name="so_name" string="Sales Order"/>
                 <field name="customer_name" string="Customer"/>
+                <field name="city" string="City"/>
+                <field name="marketplace_type" string="Marketplace"/>
                 <field name="product_name" string="Product"/>
                 <field name="sku" string="SKU"/>
                 <field name="invoice_number" string="Invoice Number"/>
                 <separator/>
+                <filter string="Blinkit" name="mp_blinkit"
+                    domain="[('marketplace_type', 'in', ['blinkit', 'Blinkit'])]"/>
+                <filter string="Flipkart" name="mp_flipkart"
+                    domain="[('marketplace_type', 'in', ['flipkart', 'Flipkart'])]"/>
+                <filter string="Instamart" name="mp_instamart"
+                    domain="[('marketplace_type', 'in', ['instamart', 'Instamart'])]"/>
+                <filter string="Meesho" name="mp_meesho"
+                    domain="[('marketplace_type', 'in', ['meesho', 'Meesho'])]"/>
+                <filter string="Myntra" name="mp_myntra"
+                    domain="[('marketplace_type', 'in', ['myntra', 'Myntra'])]"/>
+                <filter string="Zepto" name="mp_zepto"
+                    domain="[('marketplace_type', 'in', ['zepto', 'Zepto'])]"/>
+
+                <separator/>
                 <filter name="filter_today" string="Today"
-                    domain="[('order_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                    domain="[('order_date', '=', context_today())]"/>
+
                 <filter name="filter_this_month" string="This Month"
-                    domain="[('order_date', '&gt;=', (context_today().replace(day=1)).strftime('%Y-%m-%d'))]"/>
+                    domain="[('order_date', '&gt;=', (context_today() + relativedelta(day=1)))]"/>
+
                 <group expand="0" string="Group By">
+                    <filter name="group_marketplace" string="Marketplace" context="{'group_by': 'marketplace_type'}"/>
                     <filter name="group_customer" string="Customer" context="{'group_by': 'customer_name'}"/>
+                    <filter name="group_city" string="City" context="{'group_by': 'city'}"/>
                     <filter name="group_product" string="Product" context="{'group_by': 'product_name'}"/>
+                    <filter name="group_order_date" string="Order Date" context="{'group_by': 'order_date:month'}"/>
                 </group>
             </search>
         </field>
@@ -30,6 +51,8 @@
             <list string="Sales Margin Report" create="false" edit="false" delete="false">
                 <field name="so_name" string="Sales Order Number"/>
                 <field name="customer_name" string="Customer Name"/>
+                <field name="city" string="City"/>
+                <field name="marketplace_type" string="Marketplace" optional="show"/>
                 <field name="invoice_number" string="Invoice Number"/>
                 <field name="product_name" string="Product Name"/>
                 <field name="ean_number" string="EAN Number"/>
