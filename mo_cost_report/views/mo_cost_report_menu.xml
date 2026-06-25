@@ -7,7 +7,7 @@
     -->
     <menuitem
         id="menu_mo_cost_report"
-        name="MO Consolidate Report"
+        name="Production Report"
         parent="mrp.menu_mrp_reporting"
         action="action_mo_cost_report"
         sequence="25"
