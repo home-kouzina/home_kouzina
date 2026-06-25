@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="amazon_account_view_form" model="ir.ui.view">
+        <field name="name">amazon.account.form.returns</field>
+        <field name="model">amazon.account</field>
+        <field name="inherit_id" ref="sale_amazon.amazon_account_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <button name="action_check_return_authorization"
+                        string="Check Return API Access"
+                        type="object"
+                        class="btn-secondary"
+                        groups="sales_team.group_sale_manager"
+                        invisible="not refresh_token"/>
+                <button name="action_sync_returns"
+                        string="Sync Returns"
+                        type="object"
+                        class="btn-secondary"
+                        groups="sales_team.group_sale_manager"
+                        invisible="not refresh_token"/>
+            </xpath>
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_view_returns"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-undo"
+                        invisible="not id">
+                    <field name="return_count" widget="statinfo" string="Returns"/>
+                </button>
+            </xpath>
+            <xpath expr="//page[@name='follow_up']//field[@name='last_orders_sync']" position="after">
+                <field name="last_returns_sync" groups="base.group_no_one"/>
+                <field name="return_report_status"/>
+                <field name="return_report_id" groups="base.group_no_one"/>
+                <field name="return_sync_error" invisible="not return_sync_error"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

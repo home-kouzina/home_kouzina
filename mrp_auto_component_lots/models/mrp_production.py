@@ -11,6 +11,40 @@ class MrpProduction(models.Model):
         string='Show Auto Assign Finished Lot',
         compute='_compute_show_auto_assign_finished_lot',
     )
+    approval_status = fields.Selection(
+        selection=[
+            ('draft', 'Draft'),
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+        ],
+        string='Approval Status',
+        default='draft',
+        tracking=True,
+        copy=False,
+    )
+    mo_status_bar = fields.Selection(
+        selection=[
+            ('draft', 'Draft'),
+            ('pending', 'Pending'),
+            ('approved', 'Approved'),
+            ('confirmed', 'Confirmed'),
+            ('done', 'Done'),
+        ],
+        string='Status',
+        compute='_compute_mo_status_bar',
+    )
+
+    @api.depends('state', 'approval_status')
+    def _compute_mo_status_bar(self):
+        for production in self:
+            if production.state == 'done':
+                production.mo_status_bar = 'done'
+            elif production.state in ('confirmed', 'progress', 'to_close'):
+                production.mo_status_bar = 'confirmed'
+            elif production.approval_status in ('pending', 'approved'):
+                production.mo_status_bar = production.approval_status
+            else:
+                production.mo_status_bar = 'draft'
 
     @api.depends(
         'state',
@@ -74,3 +108,39 @@ class MrpProduction(models.Model):
                 },
             },
         }
+    
+    ## Approval Functionality In the Manufacturing Order Is Below 
+    
+    def action_approved(self):
+        for production in self:
+            if not self.env.user.manufacture_approver:
+                raise UserError(_("Only a manufacturing approver can approve this Manufacturing Order."))
+            if production.approval_status != 'pending':
+                raise UserError(_("Only Manufacturing Orders pending approval can be approved."))
+
+            production.approval_status = 'approved'
+            production.message_post(
+                body=_("Manufacturing Order approved by %s.") % self.env.user.display_name,
+            )
+
+    def action_approved_submit(self):
+        for production in self:
+            if production.approval_status == 'approved':
+                raise UserError(_("This Manufacturing Order is already approved."))
+
+            production.approval_status = 'pending'
+            production.message_post(
+                body=_("Manufacturing Order submitted for approval by %s.") % self.env.user.display_name,
+            )
+
+
+    is_manufacture_approver = fields.Boolean(
+        string='Is Manufacturing Approver',
+        compute='_compute_is_manufacture_approver',
+    )
+
+    @api.depends_context('uid')
+    def _compute_is_manufacture_approver(self):
+        is_approver = self.env.user.manufacture_approver
+        for rec in self:
+            rec.is_manufacture_approver = is_approver    

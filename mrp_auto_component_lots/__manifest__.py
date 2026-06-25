@@ -7,6 +7,7 @@
     'category': 'Manufacturing/Manufacturing',
     'depends': ['mrp', 'stock'],
     'data': [
+        'views/res_users_views.xml',
         'views/mrp_production_views.xml',
         'views/stock_picking_view.xml',
         'views/product_template_views.xml',

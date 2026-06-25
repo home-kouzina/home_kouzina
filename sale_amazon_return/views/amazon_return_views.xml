@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="amazon_return_view_list" model="ir.ui.view">
+        <field name="name">amazon.return.list</field>
+        <field name="model">amazon.return</field>
+        <field name="arch" type="xml">
+            <list string="Amazon Returns" create="false" edit="false" delete="false">
+                <field name="return_request_date"/>
+                <field name="amazon_rma_id"/>
+                <field name="amazon_order_ref"/>
+                <field name="sale_order_id"/>
+                <field name="merchant_sku"/>
+                <field name="product_id" optional="show"/>
+                <field name="return_quantity"/>
+                <field name="return_status"/>
+                <field name="return_reason" optional="show"/>
+                <field name="account_id" optional="hide"/>
+                <field name="company_id" groups="base.group_multi_company" optional="hide"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="amazon_return_view_form" model="ir.ui.view">
+        <field name="name">amazon.return.form</field>
+        <field name="model">amazon.return</field>
+        <field name="arch" type="xml">
+            <form string="Amazon Return" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="amazon_rma_id" string="Amazon RMA"/>
+                        <h1><field name="amazon_rma_id"/></h1>
+                    </div>
+                    <group>
+                        <group string="Return">
+                            <field name="account_id"/>
+                            <field name="return_status"/>
+                            <field name="return_request_date"/>
+                            <field name="return_delivery_date"/>
+                            <field name="return_type"/>
+                            <field name="resolution"/>
+                            <field name="return_reason"/>
+                            <field name="in_policy"/>
+                        </group>
+                        <group string="Original Order">
+                            <field name="amazon_order_ref"/>
+                            <field name="sale_order_id"/>
+                            <field name="sale_order_line_id"/>
+                            <field name="order_date"/>
+                            <field name="invoice_number"/>
+                            <field name="is_prime"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Item">
+                            <field name="product_id"/>
+                            <field name="merchant_sku"/>
+                            <field name="asin"/>
+                            <field name="item_name"/>
+                            <field name="return_quantity"/>
+                            <field name="order_quantity"/>
+                        </group>
+                        <group string="Return Shipping">
+                            <field name="merchant_rma_id"/>
+                            <field name="return_carrier"/>
+                            <field name="tracking_id"/>
+                            <field name="label_type"/>
+                            <field name="label_to_be_paid_by"/>
+                        </group>
+                    </group>
+                    <group string="Amounts">
+                        <field name="currency_id"/>
+                        <field name="order_amount"/>
+                        <field name="label_cost"/>
+                        <field name="refunded_amount"/>
+                    </group>
+                    <group string="Claims">
+                        <field name="a_to_z_claim"/>
+                        <field name="safe_t_action_reason"/>
+                        <field name="safe_t_claim_id"/>
+                        <field name="safe_t_claim_state"/>
+                        <field name="safe_t_claim_creation_time"/>
+                        <field name="safe_t_reimbursement_amount"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="amazon_return_view_search" model="ir.ui.view">
+        <field name="name">amazon.return.search</field>
+        <field name="model">amazon.return</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="amazon_rma_id"/>
+                <field name="amazon_order_ref"/>
+                <field name="sale_order_id"/>
+                <field name="merchant_sku"/>
+                <field name="product_id"/>
+                <field name="return_status"/>
+                <field name="account_id"/>
+                <group expand="0" string="Group By">
+                    <filter name="group_account" string="Amazon Account" context="{'group_by': 'account_id'}"/>
+                    <filter name="group_status" string="Status" context="{'group_by': 'return_status'}"/>
+                    <filter name="group_request_month" string="Request Month" context="{'group_by': 'return_request_date:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="amazon_return_action" model="ir.actions.act_window">
+        <field name="name">Amazon Returns</field>
+        <field name="res_model">amazon.return</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'create': False, 'delete': False}</field>
+    </record>
+
+    <menuitem id="amazon_return_menu"
+              name="Amazon Returns"
+              parent="sale.sale_order_menu"
+              action="amazon_return_action"
+              groups="sales_team.group_sale_manager"
+              sequence="35"/>
+</odoo>
+
