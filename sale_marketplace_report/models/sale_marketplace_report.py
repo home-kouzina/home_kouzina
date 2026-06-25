@@ -143,6 +143,7 @@ class SaleMarketplaceReport(models.Model):
                 JOIN product_template pt     ON pt.id = pp.product_tmpl_id
                 LEFT JOIN res_partner rp     ON rp.id = so.partner_id
                 WHERE sol.display_type IS NULL
+                AND pt.type != 'service'
             )
         """ % self._table)
 
