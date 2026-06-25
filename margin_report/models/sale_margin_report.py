@@ -11,6 +11,8 @@ class SaleMarginReport(models.Model):
     so_id = fields.Many2one('sale.order', string='Sales Order', readonly=True)
     so_name = fields.Char(string='Sales Order Number', readonly=True)
     customer_name = fields.Char(string='Customer Name', readonly=True)
+    marketplace_type = fields.Char(string='Marketplace', readonly=True)
+    city = fields.Char(string='City', readonly=True)
     invoice_number = fields.Char(string='Invoice Number', readonly=True)
     product_id = fields.Many2one('product.product', string='Product', readonly=True)
     product_name = fields.Char(string='Product Name', readonly=True)
@@ -34,6 +36,11 @@ class SaleMarginReport(models.Model):
                     so.id AS so_id,
                     so.name AS so_name,
                     rp.name AS customer_name,
+                    COALESCE(
+                        so.marketplace_type::TEXT,
+                        ''
+                    ) AS marketplace_type,
+                    COALESCE(rp.city, '') AS city,
                     COALESCE(
                         (
                             SELECT STRING_AGG(am2.name, ', ' ORDER BY am2.name)

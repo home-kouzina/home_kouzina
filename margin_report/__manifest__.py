@@ -4,7 +4,7 @@
     'summary': 'Sales Margin Report under Sales > Reporting',
     'description': 'Adds a Margin Report list view under Sales > Reporting with COGS, Gross Margin, SKU, EAN, and invoice details.',
     'category': 'Sales',
-    'depends': ['sale_management', 'product', 'account'],
+    'depends': ['sale_management', 'product', 'account', 'marketplace'],
     'data': [
         'security/ir.model.access.csv',
         'views/sale_margin_report_views.xml',
