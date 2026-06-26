@@ -1,6 +1,6 @@
 import base64
 import io
-from datetime import datetime
+from datetime import date, datetime, time
 from odoo import models, fields, api
 from odoo.exceptions import UserError
 import xlsxwriter
@@ -65,7 +65,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         'Billing State': 'customer_state',
         'Billing Zip': 'customer_zip',
         'Billing Country': 'customer_country',
-        'Order Date': 'order_date',
         'Product SKU': 'product_sku',
         'Product Name': 'product_name',
         'EAN No.': 'ean',
@@ -147,18 +146,6 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         if not row.get('marketplace_order_id'):
             errors.append('Missing marketplace_order_id')
 
-        order_date = row.get('order_date')
-        if order_date:
-            if not isinstance(order_date, (datetime, str)):
-                errors.append('order_date must be a valid date or string format')
-            elif isinstance(order_date, str):
-                try:
-                    datetime.fromisoformat(order_date.replace('Z', ''))
-                except ValueError:
-                    try:
-                        datetime.strptime(order_date, '%Y-%m-%d')
-                    except ValueError:
-                        errors.append('order_date must be in YYYY-MM-DD format')
         return errors
 
     def _validate_customer_fields(self, row):
@@ -360,6 +347,30 @@ class MarketplaceOrderImportWizard(models.TransientModel):
             '|', ('origin', '=', origin), ('marketplace_order_ref', '=', marketplace_order_id)
         ], limit=1)
 
+    def _parse_sheet_date(self, value):
+        if not value:
+            return False
+        if isinstance(value, datetime):
+            return value
+        if isinstance(value, date):
+            return datetime.combine(value, time.min)
+
+        value_str = str(value).strip()
+        if not value_str:
+            return False
+
+        try:
+            return datetime.fromisoformat(value_str.replace('Z', '').split('+')[0])
+        except ValueError:
+            pass
+
+        for fmt in ('%Y-%m-%d', '%d-%m-%Y', '%d/%m/%Y', '%m/%d/%Y'):
+            try:
+                return datetime.strptime(value_str, fmt)
+            except ValueError:
+                continue
+        return False
+
     # --- CHANGED: Explicitly receives individual row-level marketplace context record ---
     def _process_order_group(self, marketplace_order_id, marketplace_record, rows):
         failed_rows = []
@@ -382,10 +393,12 @@ class MarketplaceOrderImportWizard(models.TransientModel):
 
         origin = f"marketplace:{marketplace_record.name}|{marketplace_order_id}"
         warehouse = getattr(marketplace_record, 'warehouse_map', self.env.ref('stock.warehouse0'))
+        marketplace_order_date = self._parse_sheet_date(first_row.get('marketplace_order_date'))
+        sale_order_date = marketplace_order_date or fields.Datetime.now()
 
         order_vals = {
             'partner_id': customer.id,
-            'date_order': first_row.get('order_date') or fields.Datetime.now(),
+            'date_order': sale_order_date,
             'origin': origin,
             'warehouse_id': warehouse.id if warehouse else self.env.ref('stock.warehouse0').id,
             'team_id': self.env.ref('sales_team.salesteam_website_sales').id,
@@ -416,6 +429,8 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         for fld in marketplace_fields:
             if first_row.get(fld):
                 order_vals[fld] = first_row.get(fld)
+        if marketplace_order_date:
+            order_vals['marketplace_order_date'] = fields.Date.to_date(marketplace_order_date)
 
         sale_order = self.env['sale.order'].create(order_vals)
 
@@ -486,6 +501,7 @@ class MarketplaceOrderImportWizard(models.TransientModel):
         if self.confirm_orders and not failed_rows:
             try:
                 sale_order.action_confirm()
+                sale_order.write({'date_order': sale_order_date})
             except Exception as e:
                 return {'success': False, 'order': sale_order, 'failed_rows': [(idx, str(e)) for idx, _ in rows]}
 
