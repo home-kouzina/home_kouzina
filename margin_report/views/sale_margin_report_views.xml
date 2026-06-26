@@ -25,6 +25,10 @@
                     domain="[('marketplace_type', 'in', ['myntra', 'Myntra'])]"/>
                 <filter string="Zepto" name="mp_zepto"
                     domain="[('marketplace_type', 'in', ['zepto', 'Zepto'])]"/>
+                <filter string="Amazon" name="mp_amazon"
+                    domain="[('marketplace_type', 'in', ['amazon', 'Amazon'])]"/>
+                <filter string="Shopify" name="mp_shopify"
+                    domain="[('marketplace_type', 'in', ['shopify', 'Shopify'])]"/>    
 
                 <separator/>
                 <filter name="filter_today" string="Today"
