@@ -2,8 +2,8 @@
 
 {
     'name': "Amazon Returns",
-    'summary': "Import Amazon FBM return requests",
-    'version': '1.0',
+    'summary': "Import Amazon FBM and FBA returns",
+    'version': '2.0',
     'category': 'Sales/Sales',
     'license': 'OEEL-1',
     'depends': ['sale_amazon'],
@@ -15,4 +15,3 @@
         'views/amazon_account_views.xml',
     ],
 }
-

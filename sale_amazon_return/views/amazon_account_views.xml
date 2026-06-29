@@ -31,8 +31,14 @@
             <xpath expr="//page[@name='follow_up']//field[@name='last_orders_sync']" position="after">
                 <field name="last_returns_sync" groups="base.group_no_one"/>
                 <field name="return_report_status"/>
+                <field name="last_fbm_return_report_rows"/>
                 <field name="return_report_id" groups="base.group_no_one"/>
                 <field name="return_sync_error" invisible="not return_sync_error"/>
+                <field name="last_fba_returns_sync" groups="base.group_no_one"/>
+                <field name="fba_return_report_status"/>
+                <field name="last_fba_return_report_rows"/>
+                <field name="fba_return_report_id" groups="base.group_no_one"/>
+                <field name="fba_return_sync_error" invisible="not fba_return_sync_error"/>
             </xpath>
         </field>
     </record>
