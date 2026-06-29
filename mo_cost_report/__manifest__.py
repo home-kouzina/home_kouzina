@@ -8,7 +8,7 @@
     """,
     'author': 'Custom',
     'category': 'Manufacturing',
-    'depends': ['mrp', 'mrp_account'],
+    'depends': ['mrp', 'mrp_account', 'visible_group_export'],
     'data': [
         'security/ir.model.access.csv',
         'views/mo_cost_report_views.xml',

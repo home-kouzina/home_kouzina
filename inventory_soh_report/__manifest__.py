@@ -18,7 +18,7 @@
         - Variance
     """,
     'author': 'Custom',
-    'depends': ['stock', 'purchase', 'sale_stock', 'hk_inventory_variation'],
+    'depends': ['stock', 'purchase', 'sale_stock', 'hk_inventory_variation', 'visible_group_export'],
     'data': [
         'security/ir.model.access.csv',
         'views/inventory_soh_report_views.xml',

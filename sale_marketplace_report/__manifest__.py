@@ -9,7 +9,7 @@
     """,
     'author': 'Custom',
     'category': 'Sales',
-    'depends': ['sale_management'],
+    'depends': ['sale_management', 'visible_group_export'],
     'data': [
         'security/ir.model.access.csv',
         'views/sale_marketplace_report_views.xml',
