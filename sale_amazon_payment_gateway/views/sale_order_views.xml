@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="amazon_order_payment_gateway_view_form" model="ir.ui.view">
+        <field name="name">amazon.order.payment.gateway.form</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+            <notebook position="inside">
+                <page string="Amazon Info" name="amazon_payment_gateway"
+                      invisible="not amazon_order_ref">
+                    <group>
+                        <field name="amazon_order_ref" readonly="1"/>
+                        <field name="amazon_channel" readonly="1"/>
+                        <field name="amazon_payment_gateway" readonly="1"/>
+                    </group>
+                </page>
+            </notebook>
+        </field>
+    </record>
+
+</odoo>
