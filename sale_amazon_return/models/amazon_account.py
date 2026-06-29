@@ -31,6 +31,10 @@ const.API_OPERATIONS_MAPPING.update({
         'url_path': '/reports/2021-06-30/reports/{param}',
         'restricted_resource_path': None,
     },
+    'getReturnReportDocument': {
+        'url_path': '/reports/2021-06-30/documents/{param}',
+        'restricted_resource_path': None,
+    },
 })
 
 
