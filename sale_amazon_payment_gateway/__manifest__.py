@@ -8,6 +8,7 @@
     'license': 'OEEL-1',
     'depends': ['sale_amazon'],
     'data': [
+        'views/amazon_account_views.xml',
         'views/sale_order_views.xml',
     ],
 }
