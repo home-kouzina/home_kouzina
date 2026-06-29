@@ -1,5 +1,6 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+import hashlib
 import logging
 from datetime import timezone
 
@@ -27,6 +28,12 @@ class AmazonReturn(models.Model):
         check_company=True,
     )
     company_id = fields.Many2one(related='account_id.company_id', store=True, readonly=True)
+    fulfillment_type = fields.Selection(
+        selection=[('fbm', "Fulfillment by Merchant"), ('fba', "Fulfillment by Amazon")],
+        required=True,
+        default='fbm',
+        readonly=True,
+    )
     amazon_rma_id = fields.Char(string="Amazon RMA", required=True, readonly=True)
     merchant_rma_id = fields.Char(string="Merchant RMA", readonly=True)
     amazon_order_ref = fields.Char(string="Amazon Order", required=True, readonly=True)
@@ -79,6 +86,11 @@ class AmazonReturn(models.Model):
     safe_t_reimbursement_amount = fields.Monetary(
         string="Safe-T Reimbursement Amount", readonly=True
     )
+    fnsku = fields.Char(string="FNSKU", readonly=True)
+    fulfillment_center_id = fields.Char(string="Fulfillment Center", readonly=True)
+    detailed_disposition = fields.Char(string="Disposition", readonly=True)
+    license_plate_number = fields.Char(string="LPN", readonly=True)
+    customer_comments = fields.Text(readonly=True)
 
     _sql_constraints = [(
         'unique_amazon_return_line',
@@ -132,6 +144,7 @@ class AmazonReturn(models.Model):
         )
         return {
             'account_id': account.id,
+            'fulfillment_type': 'fbm',
             'amazon_rma_id': row.get('amazon_rma_id'),
             'merchant_rma_id': row.get('merchant_rma_id'),
             'amazon_order_ref': amazon_order_ref,
@@ -201,3 +214,86 @@ class AmazonReturn(models.Model):
             imported_returns |= amazon_return
         return imported_returns
 
+    @api.model
+    def _get_fba_reference(self, row):
+        """Build a stable technical reference for an FBA return report row."""
+        reference_values = (
+            row.get('return_date', ''),
+            row.get('order_id', ''),
+            row.get('sku', ''),
+            row.get('fnsku', ''),
+            row.get('fulfillment_center_id', ''),
+            row.get('license_plate_number', ''),
+            row.get('detailed_disposition', ''),
+            row.get('reason', ''),
+        )
+        digest = hashlib.sha1(  # noqa: S324 - used as a stable identifier, not for security.
+            '\N{UNIT SEPARATOR}'.join(reference_values).encode(),
+            usedforsecurity=False,
+        ).hexdigest()[:20]
+        return f"FBA-{digest}"
+
+    @api.model
+    def _prepare_values_from_fba_report_row(self, account, row, fba_reference):
+        amazon_order_ref = row.get('order_id')
+        merchant_sku = row.get('sku')
+        sale_order = self.env['sale.order'].search(
+            [('amazon_order_ref', '=', amazon_order_ref)], limit=1
+        )
+        offer = self.env['amazon.offer'].search([
+            ('account_id', '=', account.id),
+            ('sku', '=', merchant_sku),
+        ], limit=1)
+        sale_order_line = sale_order.order_line.filtered(
+            lambda line: line.amazon_offer_id == offer
+        )[:1]
+        return {
+            'account_id': account.id,
+            'fulfillment_type': 'fba',
+            'amazon_rma_id': fba_reference,
+            'amazon_order_ref': amazon_order_ref,
+            'sale_order_id': sale_order.id,
+            'sale_order_line_id': sale_order_line.id,
+            'product_id': (sale_order_line.product_id or offer.product_id).id,
+            'merchant_sku': merchant_sku,
+            'asin': row.get('asin'),
+            'fnsku': row.get('fnsku'),
+            'item_name': row.get('product_name'),
+            'return_quantity': self._parse_report_float(row.get('quantity')),
+            'return_reason': row.get('reason'),
+            'return_status': row.get('status'),
+            'return_type': 'FBA',
+            'return_request_date': self._parse_report_datetime(row.get('return_date')),
+            'fulfillment_center_id': row.get('fulfillment_center_id'),
+            'detailed_disposition': row.get('detailed_disposition'),
+            'license_plate_number': row.get('license_plate_number'),
+            'customer_comments': row.get('customer_comments'),
+        }
+
+    @api.model
+    def _import_fba_report_rows(self, account, rows):
+        imported_returns = self.env['amazon.return']
+        for row in rows:
+            required_values = (row.get('return_date'), row.get('order_id'), row.get('sku'))
+            if not all(required_values):
+                _logger.warning(
+                    "Skipped an incomplete Amazon FBA return report row for account %s: %s",
+                    account.id, row,
+                )
+                continue
+            fba_reference = self._get_fba_reference(row)
+            amazon_return = self.search([
+                ('account_id', '=', account.id),
+                ('amazon_rma_id', '=', fba_reference),
+                ('amazon_order_ref', '=', row['order_id']),
+                ('merchant_sku', '=', row['sku']),
+            ], limit=1)
+            values = self._prepare_values_from_fba_report_row(
+                account, row, fba_reference
+            )
+            if amazon_return:
+                amazon_return.write(values)
+            else:
+                amazon_return = self.create(values)
+            imported_returns |= amazon_return
+        return imported_returns

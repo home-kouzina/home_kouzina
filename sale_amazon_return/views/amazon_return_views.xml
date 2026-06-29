@@ -6,6 +6,7 @@
         <field name="arch" type="xml">
             <list string="Amazon Returns" create="false" edit="false" delete="false">
                 <field name="return_request_date"/>
+                <field name="fulfillment_type"/>
                 <field name="amazon_rma_id"/>
                 <field name="amazon_order_ref"/>
                 <field name="sale_order_id"/>
@@ -27,12 +28,13 @@
             <form string="Amazon Return" create="false" edit="false" delete="false">
                 <sheet>
                     <div class="oe_title">
-                        <label for="amazon_rma_id" string="Amazon RMA"/>
+                        <label for="amazon_rma_id" string="Amazon Return Reference"/>
                         <h1><field name="amazon_rma_id"/></h1>
                     </div>
                     <group>
                         <group string="Return">
                             <field name="account_id"/>
+                            <field name="fulfillment_type"/>
                             <field name="return_status"/>
                             <field name="return_request_date"/>
                             <field name="return_delivery_date"/>
@@ -58,6 +60,10 @@
                             <field name="item_name"/>
                             <field name="return_quantity"/>
                             <field name="order_quantity"/>
+                            <field name="fnsku" invisible="fulfillment_type != 'fba'"/>
+                            <field name="fulfillment_center_id" invisible="fulfillment_type != 'fba'"/>
+                            <field name="detailed_disposition" invisible="fulfillment_type != 'fba'"/>
+                            <field name="license_plate_number" invisible="fulfillment_type != 'fba'"/>
                         </group>
                         <group string="Return Shipping">
                             <field name="merchant_rma_id"/>
@@ -66,6 +72,9 @@
                             <field name="label_type"/>
                             <field name="label_to_be_paid_by"/>
                         </group>
+                    </group>
+                    <group string="FBA Customer Comments" invisible="fulfillment_type != 'fba'">
+                        <field name="customer_comments" nolabel="1"/>
                     </group>
                     <group string="Amounts">
                         <field name="currency_id"/>
@@ -97,10 +106,12 @@
                 <field name="merchant_sku"/>
                 <field name="product_id"/>
                 <field name="return_status"/>
+                <field name="fulfillment_type"/>
                 <field name="account_id"/>
                 <group expand="0" string="Group By">
                     <filter name="group_account" string="Amazon Account" context="{'group_by': 'account_id'}"/>
                     <filter name="group_status" string="Status" context="{'group_by': 'return_status'}"/>
+                    <filter name="group_fulfillment" string="Fulfillment" context="{'group_by': 'fulfillment_type'}"/>
                     <filter name="group_request_month" string="Request Month" context="{'group_by': 'return_request_date:month'}"/>
                 </group>
             </search>
@@ -121,4 +132,3 @@
               groups="sales_team.group_sale_manager"
               sequence="35"/>
 </odoo>
-
