@@ -258,7 +258,8 @@
         <field name="search_view_id" ref="view_hk_purchase_report_search"/>
         <field name="context">{
             'search_default_filter_purchase': 1,
-            'search_default_groupby_order': 1
+            'search_default_groupby_order': 1,
+            'visible_group_export': True,
         }</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">
