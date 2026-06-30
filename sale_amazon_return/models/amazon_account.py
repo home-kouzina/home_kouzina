@@ -122,14 +122,14 @@ class AmazonAccount(models.Model):
                 fbm=self.return_report_status or _("waiting"),
                 fba=self.fba_return_report_status or _("waiting"),
             ))
-        self._request_fba_return_report(days=60)
-        self._request_return_report(days=60)
+        self._request_fba_return_report()
+        self._request_return_report()
         return {
             'effect': {
                 'type': 'rainbow_man',
                 'message': _(
-                    "Amazon accepted the FBM and FBA return report requests. Document access "
-                    "will be checked when each report is ready."
+                    "Amazon accepted the FBM and FBA return report requests for today. "
+                    "Document access will be checked when each report is ready."
                 ),
             }
         }
@@ -146,11 +146,123 @@ class AmazonAccount(models.Model):
             }
         }
 
-    def _request_return_report(self, days=60):
+    def action_sync_historical_returns(self):
+        self._sync_historical_returns(force=True)
+        return {
+            'effect': {
+                'type': 'rainbow_man',
+                'message': _(
+                    "Amazon historical return backfill was started. All available past "
+                    "returns will be imported as reports become available."
+                ),
+            }
+        }
+
+    def _request_return_report(self, days=0):
         self.ensure_one()
         amazon_utils.ensure_account_is_set_up(self)
         end_time = fields.Datetime.now()
-        start_time = end_time - timedelta(days=days)
+        start_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        if days:
+            start_time = end_time - timedelta(days=days)
+        payload = {
+            'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
+            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
+            'dataStartTime': start_time.isoformat() + 'Z',
+            'dataEndTime': end_time.isoformat() + 'Z',
+        }
+        response = amazon_utils.make_sp_api_request(
+            self, 'createReturnReport', payload=payload, method='POST'
+        )
+        self.write({
+            'return_report_id': response['reportId'],
+            'return_report_status': 'IN_QUEUE',
+            'return_report_start': start_time,
+            'return_report_end': end_time,
+            'return_sync_error': False,
+        })
+
+    def _request_fba_return_report(self, days=0):
+        self.ensure_one()
+        amazon_utils.ensure_account_is_set_up(self)
+        end_time = fields.Datetime.now()
+        start_time = end_time.replace(hour=0, minute=0, second=0, microsecond=0)
+        if days:
+            start_time = end_time - timedelta(days=days)
+        payload = {
+            'reportType': 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
+            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
+            'dataStartTime': start_time.isoformat() + 'Z',
+            'dataEndTime': end_time.isoformat() + 'Z',
+        }
+        response = amazon_utils.make_sp_api_request(
+            self, 'createReturnReport', payload=payload, method='POST'
+        )
+        self.write({
+            'fba_return_report_id': response['reportId'],
+            'fba_return_report_status': 'IN_QUEUE',
+            'fba_return_report_start': start_time,
+            'fba_return_report_end': end_time,
+            'fba_return_sync_error': False,
+        })
+
+    def _request_historical_return_report(self):
+        self.ensure_one()
+        amazon_utils.ensure_account_is_set_up(self)
+        end_time = fields.Datetime.now()
+        start_time = end_time - timedelta(days=3650)
+        payload = {
+            'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
+            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
+            'dataStartTime': start_time.isoformat() + 'Z',
+            'dataEndTime': end_time.isoformat() + 'Z',
+        }
+        response = amazon_utils.make_sp_api_request(
+            self, 'createReturnReport', payload=payload, method='POST'
+        )
+        self.write({
+            'return_report_id': response['reportId'],
+            'return_report_status': 'IN_QUEUE',
+            'return_report_start': start_time,
+            'return_report_end': end_time,
+            'return_sync_error': False,
+        })
+
+    def _request_historical_fba_return_report(self):
+        self.ensure_one()
+        amazon_utils.ensure_account_is_set_up(self)
+        end_time = fields.Datetime.now()
+        start_time = end_time - timedelta(days=3650)
+        payload = {
+            'reportType': 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
+            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
+            'dataStartTime': start_time.isoformat() + 'Z',
+            'dataEndTime': end_time.isoformat() + 'Z',
+        }
+        response = amazon_utils.make_sp_api_request(
+            self, 'createReturnReport', payload=payload, method='POST'
+        )
+        self.write({
+            'fba_return_report_id': response['reportId'],
+            'fba_return_report_status': 'IN_QUEUE',
+            'fba_return_report_start': start_time,
+            'fba_return_report_end': end_time,
+            'fba_return_sync_error': False,
+        })
+
+    def _sync_historical_returns(self, force=False):
+        accounts = self or self.search([])
+        for account in accounts:
+            if force:
+                if account.fba_return_report_id:
+                    account._process_fba_return_report()
+                else:
+                    account._request_historical_fba_return_report()
+                if account.return_report_id:
+                    account._process_return_report()
+                else:
+                    account._request_historical_return_report()
+                continue
         payload = {
             'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
             'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
@@ -285,13 +397,14 @@ class AmazonAccount(models.Model):
                         self._process_fba_return_report()
                     elif not self.last_fba_returns_sync or (
                         self.last_fba_returns_sync
-                        <= fields.Datetime.now() - timedelta(days=1)
+                        <= fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                     ):
                         self._request_fba_return_report()
                 elif self.return_report_id:
                     self._process_return_report()
                 elif not self.last_returns_sync or (
-                    self.last_returns_sync <= fields.Datetime.now() - timedelta(days=1)
+                    self.last_returns_sync
+                    <= fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 ):
                     self._request_return_report()
         except Exception as error:

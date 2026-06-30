@@ -91,13 +91,15 @@ class TestAmazonReturn(common.TestAmazonCommon):
             'odoo.addons.sale_amazon.utils.make_sp_api_request',
             return_value={'reportId': 'REPORT-1'},
         ) as request_mock:
-            self.account._request_return_report(days=1)
+            self.account._request_return_report()
 
         request_payload = request_mock.call_args.kwargs['payload']
         self.assertEqual(
             request_payload['reportType'], 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE'
         )
         self.assertEqual(request_payload['marketplaceIds'], [self.marketplace.api_ref])
+        self.assertEqual(request_payload['dataStartTime'][-8:], 'T00:00:00')
+        self.assertEqual(request_payload['dataStartTime'][:10], request_payload['dataEndTime'][:10])
         self.assertEqual(self.account.return_report_id, 'REPORT-1')
 
     def test_request_fba_return_report(self):
@@ -105,14 +107,30 @@ class TestAmazonReturn(common.TestAmazonCommon):
             'odoo.addons.sale_amazon.utils.make_sp_api_request',
             return_value={'reportId': 'FBA-REPORT-1'},
         ) as request_mock:
-            self.account._request_fba_return_report(days=60)
+            self.account._request_fba_return_report()
 
         request_payload = request_mock.call_args.kwargs['payload']
         self.assertEqual(
             request_payload['reportType'], 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA'
         )
         self.assertEqual(request_payload['marketplaceIds'], [self.marketplace.api_ref])
+        self.assertEqual(request_payload['dataStartTime'][-8:], 'T00:00:00')
+        self.assertEqual(request_payload['dataStartTime'][:10], request_payload['dataEndTime'][:10])
         self.assertEqual(self.account.fba_return_report_id, 'FBA-REPORT-1')
+
+    def test_request_historical_return_report(self):
+        with patch(
+            'odoo.addons.sale_amazon.utils.make_sp_api_request',
+            return_value={'reportId': 'HIST-REPORT-1'},
+        ) as request_mock:
+            self.account._request_historical_return_report()
+
+        request_payload = request_mock.call_args.kwargs['payload']
+        self.assertEqual(
+            request_payload['reportType'], 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE'
+        )
+        self.assertEqual(request_payload['marketplaceIds'], [self.marketplace.api_ref])
+        self.assertTrue(request_payload['dataStartTime'] < request_payload['dataEndTime'])
 
     def test_import_fba_return_report_and_prevent_duplicates(self):
         self.order.amazon_channel = 'fba'
