@@ -12,7 +12,6 @@ class ProductTemplate(models.Model):
     is_retail = fields.Boolean(string="Is Retail", help="Tick this box if it is retail")
     is_consumable = fields.Boolean(string="Is Consumable", help="Tick this box if it is consumable")
 
-
     def action_create_reorder_point(self):
         self.ensure_one()
         return {

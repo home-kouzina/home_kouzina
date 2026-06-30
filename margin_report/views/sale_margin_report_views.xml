@@ -28,7 +28,11 @@
                 <filter string="Amazon" name="mp_amazon"
                     domain="[('marketplace_type', 'in', ['amazon', 'Amazon'])]"/>
                 <filter string="Shopify" name="mp_shopify"
-                    domain="[('marketplace_type', 'in', ['shopify', 'Shopify'])]"/>    
+                    domain="[('marketplace_type', 'in', ['shopify', 'Shopify'])]"/>
+                <filter name="finished_only" string="Finished Goods"
+                    domain="[('is_finished_good', '=', True)]"/>
+                <filter name="retail_only" string="Retail Goods"
+                    domain="[('is_retail', '=', True)]"/>
 
                 <separator/>
                 <filter name="filter_today" string="Today"
@@ -42,6 +46,8 @@
                     <filter name="group_customer" string="Customer" context="{'group_by': 'customer_name'}"/>
                     <filter name="group_city" string="City" context="{'group_by': 'city'}"/>
                     <filter name="group_product" string="Product" context="{'group_by': 'product_name'}"/>
+                    <filter name="group_is_finished_good" string="Is Finished Good" context="{'group_by': 'is_finished_good'}"/>
+                    <filter name="group_is_retail" string="Is Retail" context="{'group_by': 'is_retail'}"/>
                     <filter name="group_order_date" string="Order Date" context="{'group_by': 'order_date:month'}"/>
                 </group>
             </search>
@@ -61,6 +67,7 @@
                 <field name="product_name" string="Product Name"/>
                 <field name="ean_number" string="EAN Number"/>
                 <field name="sku" string="SKU"/>
+                <field name="is_retail" string="Is Retail"/>
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="cogs" string="COGS" widget="monetary"/>
                 <field name="nett" string="Nett(Untaxed)" widget="monetary"/>

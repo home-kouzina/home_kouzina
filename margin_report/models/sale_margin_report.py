@@ -18,6 +18,8 @@ class SaleMarginReport(models.Model):
     product_name = fields.Char(string='Product Name', readonly=True)
     ean_number = fields.Char(string='EAN Number', readonly=True)
     sku = fields.Char(string='SKU', readonly=True)
+    is_finished_good = fields.Boolean(string='Is Finished Good', readonly=True)
+    is_retail = fields.Boolean(string='Is Retail', readonly=True)
     product_uom_qty = fields.Float(string='Qty', readonly=True)
     cogs = fields.Float(string='COGS', readonly=True, digits='Product Price')
     nett = fields.Float(string='Nett(Untaxed)', readonly=True, digits='Product Price')
@@ -54,21 +56,24 @@ class SaleMarginReport(models.Model):
                     COALESCE(pt.name->>'en_US', pt.name::text) AS product_name,
                     COALESCE(pp.barcode, '') AS ean_number,
                     COALESCE(pp.default_code, '') AS sku,
+                    pp.is_finished_good AS is_finished_good,
+                    pt.is_retail AS is_retail,
                     sol.product_uom_qty AS product_uom_qty,
-                    COALESCE(pp.cog_before_sale, 0.0) * sol.product_uom_qty AS cogs,
+                    COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty AS cogs,
                     sol.price_subtotal AS nett,
                     pt.list_price AS mrp,
                     CASE
                         WHEN sol.price_subtotal <> 0.0
                         THEN ROUND(
-                            ((COALESCE(pp.cog_before_sale, 0.0) * sol.product_uom_qty)
+                            ((COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty)
                             / sol.price_subtotal * 100.0)::numeric, 2)
                         ELSE 0.0
                     END AS cogs_percent,
                     CASE
                         WHEN sol.price_subtotal <> 0.0
                         THEN ROUND(
-                            ((sol.price_subtotal - (COALESCE(pp.cog_before_sale, 0.0) * sol.product_uom_qty))
+                            ((sol.price_subtotal - (
+                                COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty))
                             / sol.price_subtotal * 100.0)::numeric, 2)
                         ELSE 0.0
                     END AS gross_margin,
