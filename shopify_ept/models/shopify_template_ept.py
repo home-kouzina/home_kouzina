@@ -716,162 +716,50 @@ class ShopifyProductTemplateEpt(models.Model):
         """
         Checks if the shopify product has new attribute is added.
         If new attribute is not added then we can add value and generate new variant in Odoo.
+        @author: Maulik Barad on Date 04-Sep-2020.
         """
         product_attribute_value_obj = self.env["product.attribute.value"]
         odoo_product_obj = self.env["product.product"]
 
         counter = 0
         sku = variant_data.get("sku")
-        variant_id = variant_data.get("id")
-        shopify_attributes = shopify_attributes or []
-
         odoo_attribute_lines = odoo_template.attribute_line_ids.filtered(
-            lambda x: x.attribute_id.create_variant == "always"
-        )
+            lambda x: x.attribute_id.create_variant == "always")
 
         if len(odoo_attribute_lines) != len(shopify_attributes):
-            return (
-                "Attribute count mismatch for SKU '%s'. "
-                "Shopify has %s attributes, but Odoo template '%s' has %s variant attributes. "
-                "Shopify attributes: %s. Odoo attributes: %s"
-            ) % (
-                sku,
-                len(shopify_attributes),
-                odoo_template.display_name,
-                len(odoo_attribute_lines),
-                [attr.get("name") for attr in shopify_attributes],
-                odoo_attribute_lines.mapped("attribute_id.name"),
-            )
+            message = "Product %s has tried to add new attribute for sku %s in Odoo." % (shopify_template.name, sku)
+            return message
 
-        attribute_value_domain = self.find_template_attribute_values(
-            shopify_attributes, odoo_template.id, variant_data
-        )
-
+        attribute_value_domain = self.find_template_attribute_values(shopify_attributes, odoo_template.id, variant_data)
         if not attribute_value_domain:
             for shopify_attribute in shopify_attributes:
                 counter += 1
                 attribute_name = "option" + str(counter)
                 attribute_value = variant_data.get(attribute_name)
-                shopify_attribute_name = shopify_attribute.get("name")
 
-                attribute_line = odoo_attribute_lines.filtered(
-                    lambda x: x.display_name == shopify_attribute_name
-                )
+                attribute_id = odoo_attribute_lines.filtered(
+                    lambda x: x.display_name == shopify_attribute.get("name")).attribute_id.id
+                value_id = \
+                    product_attribute_value_obj.get_attribute_values(attribute_value, attribute_id, auto_create=True)[
+                        0].id
 
-                if not attribute_line:
-                    return (
-                        "Shopify attribute '%s' with value '%s' does not exist on Odoo template '%s'. "
-                        "SKU: %s. Shopify Variant ID: %s. Available Odoo attributes: %s"
-                    ) % (
-                        shopify_attribute_name,
-                        attribute_value,
-                        odoo_template.display_name,
-                        sku,
-                        variant_id,
-                        ", ".join(odoo_attribute_lines.mapped("attribute_id.name")) or "None",
-                    )
-
-                if len(attribute_line) > 1:
-                    return (
-                        "Multiple Odoo attribute lines matched Shopify attribute '%s'. "
-                        "SKU: %s. Shopify Variant ID: %s. Matched line IDs: %s"
-                    ) % (
-                        shopify_attribute_name,
-                        sku,
-                        variant_id,
-                        attribute_line.ids,
-                    )
-
-                attribute_id = attribute_line.attribute_id.id
-
-                if not attribute_id:
-                    return (
-                        "attribute_id is missing for Shopify attribute '%s', value '%s'. "
-                        "SKU: %s. Shopify Variant ID: %s."
-                    ) % (
-                        shopify_attribute_name,
-                        attribute_value,
-                        sku,
-                        variant_id,
-                    )
-
-                if not attribute_value:
-                    return (
-                        "Shopify attribute '%s' has empty value for SKU '%s'. "
-                        "Shopify Variant ID: %s."
-                    ) % (
-                        shopify_attribute_name,
-                        sku,
-                        variant_id,
-                    )
-
-                try:
-                    attribute_value_record = product_attribute_value_obj.get_attribute_values(
-                        attribute_value,
-                        attribute_id,
-                        auto_create=True
-                    )
-                except Exception as error:
-                    return (
-                        "Failed to create/find Odoo attribute value '%s' under attribute '%s'. "
-                        "SKU: %s. Shopify Variant ID: %s. Error: %s"
-                    ) % (
-                        attribute_value,
-                        shopify_attribute_name,
-                        sku,
-                        variant_id,
-                        error,
-                    )
-
-                if not attribute_value_record:
-                    return (
-                        "Odoo did not return/create attribute value '%s' under attribute '%s'. "
-                        "SKU: %s. Shopify Variant ID: %s."
-                    ) % (
-                        attribute_value,
-                        shopify_attribute_name,
-                        sku,
-                        variant_id,
-                    )
-
-                value_id = attribute_value_record[0].id
-
+                attribute_line = odoo_attribute_lines.filtered(lambda x: x.attribute_id.id == attribute_id)
                 if value_id not in attribute_line.value_ids.ids:
                     attribute_line.value_ids = [(4, value_id, False)]
 
             odoo_template._create_variant_ids()
-
-        attribute_value_domain = self.find_template_attribute_values(
-            shopify_attributes, odoo_template.id, variant_data
-        )
+        attribute_value_domain = self.find_template_attribute_values(shopify_attributes, odoo_template.id, variant_data)
         odoo_product = odoo_product_obj.search(attribute_value_domain)
 
         if not odoo_product:
-            return (
-                "No Odoo product variant found after attribute matching. "
-                "Product: %s. SKU: %s. Shopify Variant ID: %s. Odoo Template: %s. Domain: %s"
-            ) % (
-                shopify_template.name,
-                sku,
-                variant_id,
-                odoo_template.display_name,
-                attribute_value_domain,
-            )
+            message = ("System received an unknown error while processing the order data queue.\n"
+					   "Error message indicates an issue with the product %s with SKU: %s.\n"
+					   "Action Items:\n"
+					   "- Verify the product exists in Odoo with the same SKU.\n"
+					   "- Check if the product data is valid and synced properly.") % (shopify_template.name, sku)
+            return message
 
-        if len(odoo_product) > 1:
-            return (
-                "Multiple Odoo product variants found after attribute matching. "
-                "SKU: %s. Shopify Variant ID: %s. Product IDs: %s. Products: %s"
-            ) % (
-                sku,
-                variant_id,
-                odoo_product.ids,
-                odoo_product.mapped("display_name"),
-            )
-
-        shopify_product = self.create_or_update_shopify_variant(
-            variant_vals, False, shopify_template, odoo_product
-        )
+        shopify_product = self.create_or_update_shopify_variant(variant_vals, False, shopify_template, odoo_product)
         return shopify_product
 
     def prepare_attribute_line_data_for_variant(self, shopify_attributes, variant_data):
