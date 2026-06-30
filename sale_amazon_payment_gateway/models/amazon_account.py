@@ -1,6 +1,7 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
 import logging
+import time
 
 from odoo import _, api, models
 from odoo.exceptions import UserError
@@ -8,6 +9,9 @@ from odoo.exceptions import UserError
 from odoo.addons.sale_amazon import utils as amazon_utils
 
 _logger = logging.getLogger(__name__)
+
+RATE_LIMIT_BACKOFF_SECONDS = 30
+BATCH_SIZE = 100
 
 
 class AmazonAccount(models.Model):
@@ -67,41 +71,58 @@ class AmazonAccount(models.Model):
             )
         return False
 
-    def backfill_payment_methods_for_existing_orders(self):
-        """Fetch and update payment methods for all existing Amazon orders that don't have them.
-        
-        This method is useful when the sale_amazon_payment_gateway module is newly installed
-        and previous orders need their payment method information populated.
-        
+    def backfill_payment_methods_for_existing_orders(self, batch_size=BATCH_SIZE):
+        """Fetch and update payment methods for existing Amazon orders in smaller batches.
+
+        Processing the records in batches reduces the risk of hitting Amazon API rate limits.
+        If throttling occurs, the method pauses and stops for the current run so the next
+        invocation can continue safely.
+
+        :param int batch_size: Number of orders to process per batch.
         :return: Number of orders updated.
         :rtype: int
         """
         self.ensure_one()
-        
+
         Sale = self.env['sale.order']
-        # Find all Amazon orders for this account that don't have payment gateway info
-        orders_without_payment = Sale.search([
-            ('amazon_order_ref', '!=', False),
-            ('amazon_payment_gateway', '=', False),
-        ])
-        
         updated_count = 0
-        for order in orders_without_payment:
-            try:
-                payment_gateway = self._fetch_order_payment_details(order.amazon_order_ref)
-                if payment_gateway:
-                    order.amazon_payment_gateway = payment_gateway
-                    updated_count += 1
-                    _logger.info(
-                        "Updated payment method for order %s to: %s",
-                        order.amazon_order_ref, payment_gateway
+        offset = 0
+
+        while True:
+            orders_without_payment = Sale.search([
+                ('amazon_order_ref', '!=', False),
+                ('amazon_payment_gateway', '=', False),
+            ], limit=batch_size, offset=offset, order='id')
+            if not orders_without_payment:
+                break
+
+            for order in orders_without_payment:
+                try:
+                    payment_gateway = self._fetch_order_payment_details(order.amazon_order_ref)
+                    if payment_gateway:
+                        order.amazon_payment_gateway = payment_gateway
+                        updated_count += 1
+                        _logger.info(
+                            "Updated payment method for order %s to: %s",
+                            order.amazon_order_ref, payment_gateway
+                        )
+                except amazon_utils.AmazonRateLimitError:
+                    _logger.warning(
+                        "Amazon rate limit reached during backfill for order %s; pausing before retrying",
+                        order.amazon_order_ref,
                     )
-            except Exception as error:
-                _logger.warning(
-                    "Error updating payment method for order %s: %s",
-                    order.amazon_order_ref, str(error)
-                )
-        
+                    time.sleep(RATE_LIMIT_BACKOFF_SECONDS)
+                    return updated_count
+                except Exception as error:
+                    _logger.warning(
+                        "Error updating payment method for order %s: %s",
+                        order.amazon_order_ref, str(error)
+                    )
+
+            if len(orders_without_payment) < batch_size:
+                break
+            offset += len(orders_without_payment)
+
         return updated_count
 
     def action_backfill_payment_methods(self):

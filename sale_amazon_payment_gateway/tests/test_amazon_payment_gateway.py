@@ -1,6 +1,10 @@
 # Part of Odoo. See LICENSE file for full copyright and licensing details.
 
+from unittest.mock import patch
+
+from odoo.addons.sale_amazon import utils as amazon_utils
 from odoo.addons.sale_amazon.tests import common
+from odoo.addons.sale_amazon_payment_gateway.models import amazon_account as amazon_account_module
 
 
 class TestAmazonPaymentGateway(common.TestAmazonCommon):
@@ -53,3 +57,20 @@ class TestAmazonPaymentGateway(common.TestAmazonCommon):
 
         self.assertEqual(result, order)
         self.assertEqual(order.amazon_payment_gateway, 'COD')
+
+    def test_backfill_waits_and_stops_when_amazon_rate_limited(self):
+        self.env['sale.order'].create({
+            'partner_id': self.env.user.partner_id.id,
+            'amazon_order_ref': common.ORDER_MOCK['AmazonOrderId'],
+            'amazon_payment_gateway': False,
+        })
+
+        with patch.object(
+            amazon_account_module.AmazonAccount,
+            '_fetch_order_payment_details',
+            side_effect=amazon_utils.AmazonRateLimitError('rate limited'),
+        ), patch.object(amazon_account_module.time, 'sleep') as mock_sleep:
+            updated_count = self.account.backfill_payment_methods_for_existing_orders()
+
+        self.assertEqual(updated_count, 0)
+        mock_sleep.assert_called_once_with(amazon_account_module.RATE_LIMIT_BACKOFF_SECONDS)
