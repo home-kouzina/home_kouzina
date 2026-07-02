@@ -2,6 +2,8 @@
 # See LICENSE file for full copyright and licensing details.
 
 import logging
+import ipaddress
+from urllib.parse import urlsplit, urlunsplit
 
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
@@ -41,7 +43,7 @@ class ShopifyWebhookEpt(models.Model):
             shopify_webhook = shopify.Webhook()
         for record in self:
             if record.webhook_id:
-                url = record.get_base_url()
+                url = record._get_shopify_webhook_base_url()
                 route = record.get_route()
                 try:
                     webhook = shopify_webhook.find(record.webhook_id)
@@ -121,6 +123,33 @@ class ShopifyWebhookEpt(models.Model):
             route = "/shopify_odoo_webhook_for_customer_update"
         return route
 
+    def _get_shopify_webhook_base_url(self):
+        """Return Shopify-compatible public HTTPS URL.
+
+        Odoo commonly runs behind an HTTPS reverse proxy while ``web.base.url``
+        remains HTTP internally. In that valid deployment, use the public HTTPS
+        scheme. Local and private hosts are rejected because Shopify cannot
+        deliver webhooks to them.
+        """
+        base_url = (self.instance_id or self).get_base_url().rstrip('/')
+        parsed_url = urlsplit(base_url)
+        hostname = parsed_url.hostname or ''
+        is_private_host = hostname in ('localhost', 'localhost.localdomain')
+        try:
+            is_private_host = is_private_host or ipaddress.ip_address(hostname).is_private
+        except ValueError:
+            pass
+        if parsed_url.scheme == 'http' and not is_private_host:
+            parsed_url = parsed_url._replace(scheme='https')
+            base_url = urlunsplit(parsed_url)
+        if parsed_url.scheme != 'https' or is_private_host:
+            raise UserError(_(
+                "Shopify webhooks require a public HTTPS Odoo URL. Configure the "
+                "'web.base.url' system parameter with your public address, for example "
+                "'https://odoo.example.com'. Localhost and private IP addresses cannot "
+                "receive Shopify webhooks."))
+        return base_url
+
     def get_webhook(self):
         """
         Creates webhook in Shopify Store for webhook in Odoo if no webhook is
@@ -130,11 +159,9 @@ class ShopifyWebhookEpt(models.Model):
         instance = self.instance_id
         instance.connect_in_shopify()
         route = self.get_route()
-        current_url = instance.get_base_url()
+        current_url = self._get_shopify_webhook_base_url()
         shopify_webhook = shopify.Webhook()
         url = current_url + route
-        if url[:url.find(":")] == 'http':
-            raise UserError(_("Address protocol http:// is not supported for creating the webhooks."))
 
         webhook_vals = {"topic": self.webhook_action, "address": url, "format": "json"}
         response = shopify_webhook.create(webhook_vals)
