@@ -19,6 +19,7 @@ class ShopifyWebhookEpt(models.Model):
                                        ('products/update', 'When Product is Updated'),
                                        ('products/delete', 'When Product is Delete'),
                                        ('orders/updated', 'When Order is Created/Updated'),
+                                       ('refunds/create', 'When Refund is Created'),
                                        ('customers/create', 'When Customer is Created'),
                                        ('customers/update', 'When Customer is Updated'),
                                        ])
@@ -112,6 +113,8 @@ class ShopifyWebhookEpt(models.Model):
             route = "/shopify_odoo_webhook_for_product_delete"
         elif webhook_action == 'orders/updated':
             route = "/shopify_odoo_webhook_for_orders_partially_updated"
+        elif webhook_action == 'refunds/create':
+            route = "/shopify_odoo_webhook_for_refund_create"
         elif webhook_action == 'customers/create':
             route = "/shopify_odoo_webhook_for_customer_create"
         elif webhook_action == 'customers/update':

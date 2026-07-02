@@ -103,6 +103,19 @@ class Main(http.Controller):
                                                                                                      instance)
         return
 
+    @http.route("/shopify_odoo_webhook_for_refund_create", csrf=False, auth="public", type="json")
+    def refund_create_webhook(self):
+        """Fetch the complete order for Shopify's compact refunds/create payload."""
+        res, instance = self.get_basic_info("shopify_odoo_webhook_for_refund_create")
+        if not res or not res.get("order_id"):
+            return
+        instance.connect_in_shopify()
+        order = shopify.Order().find(res.get("order_id"))
+        if order:
+            request.env["sale.order"].sudo().process_shopify_order_via_webhook(
+                order.to_dict(), instance, True)
+        return
+
     def get_basic_info(self, route):
         """
         This method is used to check that instance and webhook are active or not. If yes then return response and

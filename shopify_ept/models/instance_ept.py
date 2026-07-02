@@ -1068,7 +1068,7 @@ class ShopifyInstanceEpt(models.Model):
         if event == 'customer':
             topic_list = ["customers/create", "customers/update"]
         if event == 'order':
-            topic_list = ["orders/updated"]
+            topic_list = ["orders/updated", "refunds/create"]
         return topic_list
 
     def configure_shopify_product_webhook(self):
