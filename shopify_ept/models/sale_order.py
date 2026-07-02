@@ -690,7 +690,13 @@ class SaleOrder(models.Model):
                     sale_order.write({'canceled_in_shopify': True})
                     sale_order.message_post(
                         body=_("The reason for the order cancellation on this Shopify store is that %s.", message))
-                    sale_order.cancel_shopify_order()
+                    context = {
+                                'shopify_status': order_data.get('financial_status'),
+                                'order_data': order_data,
+                                'created_by': 'import',
+                                'queue_line': False,
+                            }
+                    sale_order.with_context(context).cancel_shopify_order()
         instance.last_cancel_order_import_date = to_date - timedelta(days=2)
         return True
 
@@ -2408,14 +2414,15 @@ class SaleOrder(models.Model):
         common_log_line_obj = self.env["common.log.lines.ept"]
         message = self.create_shipped_order_refund(shopify_status, order_data, order, created_by)
         if message:
-            common_log_line_obj.create_common_log_line_ept(shopify_instance_id=instance.id, message=message,
-                                                           module="shopify_ept",
-                                                           model_name='sale.order',
-                                                           order_ref=order_data.get('name'),
-                                                           shopify_order_data_queue_line_id=queue_line.id if queue_line else False)
-            queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
+            common_log_line_obj.create_common_log_line_ept(
+                shopify_instance_id=instance.id, message=message, module="shopify_ept",
+                model_name='sale.order', order_ref=order_data.get('name'),
+                shopify_order_data_queue_line_id=queue_line.id if queue_line else False)
+            if queue_line:
+                queue_line.write({'state': 'failed', 'processed_at': datetime.now()})
         else:
-            queue_line.state = "done"
+            if queue_line:
+                queue_line.state = "done"
 
     def process_order_fulfillment_ept(self, order, shopify_instance, order_data, queue_line):
         message = ''
@@ -2758,54 +2765,45 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         return data
 
     def cancel_shopify_order(self):
-        """
-        Cancelled the sale order when it is cancelled in Shopify Store with full refund.
-        @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 13-Jan-2020..
-        """
-        if "done" in self.picking_ids.mapped("state"):
-            for picking_id in self.picking_ids:
-                picking_id.write({'updated_in_shopify': True})
-                picking_id.message_post(
-                    body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
-            return False
-        self.with_context(disable_cancel_warning=True).action_cancel()
-        self.canceled_in_shopify = True
-        self.write({'shopify_order_status': 'Canceled'})
-        if "draft" in self.invoice_ids.mapped("state"):
-            for invoice_id in self.invoice_ids:
-                invoice_id.message_post(
-                    body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
-                invoice_id.button_cancel()
+            if "done" in self.picking_ids.mapped("state"):
+                for picking_id in self.picking_ids:
+                    picking_id.write({'updated_in_shopify': True})
+                    picking_id.message_post(
+                        body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
+                return False
 
-        # Calling the credit note creation process to prevent duplication creation of the refunds.
-        context_dict = self.env.context
-        shopify_status = context_dict.get('shopify_status')
-        order_data = context_dict.get('order_data') or {}
-        if shopify_status in ["refunded", "partially_refunded"] and order_data.get(
-                "refunds"):
-            created_by = context_dict.get('created_by')
+            context_dict = self.env.context
+            shopify_status = context_dict.get('shopify_status')
+            order_data = context_dict.get('order_data') or {}
             queue_line = context_dict.get('queue_line')
-            self.process_order_refund_data_ept(shopify_status, order_data, self, created_by,
-                                               queue_line.shopify_instance_id,
-                                               queue_line)
-        # Check For Refunds created for order or not.
-        # A cancellation is not itself proof that money was refunded.  Creating
-        # a provisional reversal here races with Shopify's later refund update
-        # and used to produce duplicate credit notes.  Credit notes are now
-        # created only from Shopify Refund resources with successful financial
-        # transactions.
-        # elif "posted" in self.invoice_ids.mapped("state"):
-        #     for invoice_id in self.invoice_ids:
-        #         invoice_id.message_post(
-        #             body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
-        #         results = self.env['account.move.reversal'].with_context(active_model='account.move',
-        #                                                                  active_ids=invoice_id.ids).create(
-        #             {'date': reverse_move_date, 'reason': "Cancel from shopify store",
-        #              'journal_id': invoice_id.journal_id.id, }).refund_moves()
-        #         refund = self.env['account.move'].browse(results['res_id'])
-        #         refund.auto_post = 'no'
-        #         refund.action_post()
-        return True
+            created_by = context_dict.get('created_by')
+            has_refund_data = shopify_status in ("refunded", "partially_refunded") and order_data.get("refunds")
+
+            self.with_context(disable_cancel_warning=True).action_cancel()
+            self.canceled_in_shopify = True
+            self.write({'shopify_order_status': 'Canceled'})
+
+            if has_refund_data:
+                # Money actually moved on this order - post any draft invoice instead of
+                # cancelling it, so the refund can be attached to it.
+                draft_invoices = self.invoice_ids.filtered(
+                    lambda x: x.move_type == 'out_invoice' and x.state == 'draft')
+                for invoice_id in draft_invoices:
+                    invoice_id.message_post(
+                        body=_("Order %s was canceled in Shopify with a refund on it; posting "
+                            "this invoice automatically so the refund can be recorded.",
+                            self.shopify_order_number))
+                    invoice_id.action_post()
+                self.process_order_refund_data_ept(
+                    shopify_status, order_data, self, created_by,
+                    queue_line.shopify_instance_id if queue_line else self.shopify_instance_id,
+                    queue_line)
+            elif "draft" in self.invoice_ids.mapped("state"):
+                for invoice_id in self.invoice_ids:
+                    invoice_id.message_post(
+                        body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
+                    invoice_id.button_cancel()
+            return True
 
     def fulfilled_shopify_order(self, order_data):
         """
