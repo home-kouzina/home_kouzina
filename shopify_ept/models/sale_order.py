@@ -469,8 +469,26 @@ class SaleOrder(models.Model):
             sale_order = self.search_existing_shopify_order(order_response, instance, order_number)
 
             if sale_order:
-                order_data_line.write({"state": "done", "processed_at": datetime.now(),
-                                       "sale_order_id": sale_order.id, "order_data": False})
+                # An order fetched by updated_at can contain a refund created
+                # months after the sale.  Do not discard updates merely because
+                # the sale order already exists.
+                message = False
+                if order_response.get("refunds"):
+                    created_by = ('Scheduled Action' if
+                                  order_data_line.shopify_order_data_queue_id.created_by == "scheduled_action"
+                                  else self.env.user.name)
+                    message = sale_order.create_shipped_order_refund(
+                        shopify_financial_status, order_response, sale_order, created_by)
+                values = {"state": "failed" if message else "done",
+                          "processed_at": datetime.now(), "sale_order_id": sale_order.id}
+                if not message:
+                    values["order_data"] = False
+                order_data_line.write(values)
+                if message:
+                    common_log_line_obj.create_common_log_line_ept(
+                        shopify_instance_id=instance.id, module="shopify_ept", message=message,
+                        model_name='sale.order', order_ref=order_response.get("name"),
+                        shopify_order_data_queue_line_id=order_data_line.id)
                 _logger.info("Done the Process of order Because Shopify Order(%s) is exist in Odoo and Odoo order is("
                              "%s)", order_number, sale_order.name)
                 continue
@@ -684,11 +702,16 @@ class SaleOrder(models.Model):
             Task_id: 179249
         """
         message = ""
-        if shopify_financial_status == "refunded" or "partially_refunded" and order_response.get(
-                "refunds"):
+        if (shopify_financial_status in ("refunded", "partially_refunded")
+                and order_response.get("refunds")):
+            refund_ids = [str(refund.get('id')) for refund in order_response.get("refunds") if refund.get('id')]
+            existing_refund_ids = set(self.env['account.move'].search([
+                ('shopify_refund_id', 'in', refund_ids),
+                ('shopify_instance_id', '=', sale_order.shopify_instance_id.id),
+            ]).mapped('shopify_refund_id'))
             is_need_create_refund = False
             for refund in order_response.get('refunds'):
-                for transaction in refund.get('transactions'):
+                for transaction in (refund.get('transactions') or []):
                     if transaction.get('kind') == 'refund' and transaction.get('status') == 'success':
                         is_need_create_refund = True
 
@@ -696,7 +719,17 @@ class SaleOrder(models.Model):
                 message = sale_order.create_shopify_partially_refund(order_response.get("refunds"),
                                                                      order_response.get('name'), created_by,
                                                                      shopify_financial_status)
-            self.prepare_vals_shopify_multi_payment_refund(order_response.get("refunds"), sale_order)
+            # Remaining gateway balances must be changed exactly once. Replayed
+            # webhooks and the overlapping recovery poll are expected.
+            created_refund_ids = set(self.env['account.move'].search([
+                ('shopify_refund_id', 'in', refund_ids),
+                ('shopify_instance_id', '=', sale_order.shopify_instance_id.id),
+            ]).mapped('shopify_refund_id')) - existing_refund_ids
+            new_refunds = [
+                refund for refund in order_response.get("refunds")
+                if str(refund.get('id')) in created_refund_ids
+            ]
+            self.prepare_vals_shopify_multi_payment_refund(new_refunds, sale_order)
         return message
 
     def prepare_vals_shopify_multi_payment_refund(self, order_refunds, order):
@@ -707,7 +740,9 @@ class SaleOrder(models.Model):
             Task_id: 183797
         """
         for refund in order_refunds:
-            for transaction in refund.get('transactions'):
+            for transaction in (refund.get('transactions') or []):
+                if transaction.get('kind') != 'refund' or transaction.get('status') != 'success':
+                    continue
                 for payment_record in order.shopify_payment_ids:
                     if payment_record.payment_gateway_id.name == transaction.get('gateway'):
                         total_amount = payment_record.remaining_refund_amount - float(transaction.get('amount'))
@@ -2165,8 +2200,8 @@ class SaleOrder(models.Model):
                     need_to_done_queue = False
                     self.process_order_fulfillment_ept(order, shopify_instance, order_data, queue_line)
 
-                if shopify_status in ["refunded", "partially_refunded"] and order_data.get(
-                        "refunds") and instance.refund_order_webhook:
+                if (shopify_status in ["refunded", "partially_refunded"] and order_data.get("refunds")
+                        and instance.refund_order_webhook):
                     need_to_done_queue = False
                     self.process_order_refund_data_ept(shopify_status, order_data, order, created_by, instance,
                                                        queue_line)
@@ -2727,8 +2762,6 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         Cancelled the sale order when it is cancelled in Shopify Store with full refund.
         @author: Haresh Mori @Emipro Technologies Pvt. Ltd on date 13-Jan-2020..
         """
-        reverse_date = time.strftime("%Y-%m-%d %H:%M:%S")
-        reverse_move_date = str(reverse_date)
         if "done" in self.picking_ids.mapped("state"):
             for picking_id in self.picking_ids:
                 picking_id.write({'updated_in_shopify': True})
@@ -2747,7 +2780,7 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         # Calling the credit note creation process to prevent duplication creation of the refunds.
         context_dict = self.env.context
         shopify_status = context_dict.get('shopify_status')
-        order_data = context_dict.get('order_data')
+        order_data = context_dict.get('order_data') or {}
         if shopify_status in ["refunded", "partially_refunded"] and order_data.get(
                 "refunds"):
             created_by = context_dict.get('created_by')
@@ -2756,21 +2789,11 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
                                                queue_line.shopify_instance_id,
                                                queue_line)
         # Check For Refunds created for order or not.
-        refund_invoices = self.invoice_ids.filtered(
-            lambda x: x.move_type == "out_refund" and x.state == "posted")
-        if not refund_invoices:
-            # Creating Refunds for invoces of the cancel orders.When refund is not done
-            invoices = self.invoice_ids.filtered(lambda x: x.move_type == "out_invoice" and x.state == "posted")
-            for invoice_id in invoices:
-                move_reversal = self.env["account.move.reversal"].with_context(
-                    {"active_model": "account.move", "active_ids": invoice_id.ids},
-                    check_move_validity=False).create(
-                    {"reason": "Cancel from shopify store",
-                     "journal_id": invoice_id.journal_id.id, "date": reverse_move_date})
-                move_reversal.reverse_moves()
-                new_move = move_reversal.new_move_ids
-                if new_move.state == 'draft':
-                    new_move.with_context(is_shopify_reverse_move_ept=True).action_post()
+        # A cancellation is not itself proof that money was refunded.  Creating
+        # a provisional reversal here races with Shopify's later refund update
+        # and used to produce duplicate credit notes.  Credit notes are now
+        # created only from Shopify Refund resources with successful financial
+        # transactions.
         # elif "posted" in self.invoice_ids.mapped("state"):
         #     for invoice_id in self.invoice_ids:
         #         invoice_id.message_post(
@@ -2915,24 +2938,29 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
 						   "- Create and validate the invoice manually from the Sales Order.\n"
 						   "- Reprocess the queue.") % order_name
                 return message
-        refund_invoices = self.invoice_ids.filtered(lambda x: x.move_type == "out_refund" and x.state == "posted")
-        if refund_invoices:
-            total_refund_amount = 0.0
-            for refund_invoice in refund_invoices:
-                total_refund_amount += refund_invoice.amount_total
-            if total_refund_amount == self.amount_total:
-                return
+        # Serialize refund creation per order so webhook and polling workers
+        # cannot create the same Shopify refund concurrently.
+        self.env.cr.execute("SELECT id FROM sale_order WHERE id = %s FOR UPDATE", [self.id])
         for refund_data_line in refunds_data:
-            if refund_data_line.get('refund_line_items') or refund_data_line.get('order_adjustments'):
+            refund_amount = self._shopify_successful_refund_amount(refund_data_line)
+            if refund_amount:
                 existing_refund = account_move_obj.search([("shopify_refund_id", "=", refund_data_line.get('id')),
                                                            ("shopify_instance_id", "=", self.shopify_instance_id.id)])
                 if existing_refund:
+                    continue
+                legacy_refund = self._find_legacy_cancel_refund(refund_amount)
+                if legacy_refund:
+                    legacy_refund.write({
+                        'is_refund_in_shopify': True,
+                        'shopify_refund_id': str(refund_data_line.get('id')),
+                    })
                     continue
                 new_move, payment_id = self.with_context(
                     check_move_validity=False).create_move_and_delete_not_necessary_line(
                     refund_data_line, invoices, created_by, shopify_financial_status)
                 if refund_data_line.get('order_adjustments'):
                     self.create_refund_adjustment_line(refund_data_line.get('order_adjustments'), new_move)
+                self._match_shopify_refund_amount(new_move, refund_amount)
                 # new_move.with_context(check_move_validity=False)._recompute_dynamic_lines()
                 new_move.with_context(**{'check_move_validity': False})._sync_dynamic_lines({'records': new_move})
                 if new_move.state == 'draft':
@@ -2946,6 +2974,40 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
                         self.reconcile_payment_ept(payment_id, new_move)
         return message
 
+    def _shopify_successful_refund_amount(self, refund_data):
+        """Financial amount actually returned by Shopify for one refund."""
+        return sum(
+            float(transaction.get('amount') or 0.0)
+            for transaction in (refund_data.get('transactions') or [])
+            if transaction.get('kind') == 'refund' and transaction.get('status') == 'success'
+        )
+
+    def _find_legacy_cancel_refund(self, refund_amount):
+        """Adopt an old cancellation reversal when it exactly matches Shopify."""
+        candidates = self.invoice_ids.filtered(
+            lambda move: move.move_type == 'out_refund' and move.state == 'posted'
+            and not move.shopify_refund_id and move.reversed_entry_id
+            and 'Cancel from shopify store' in (move.ref or ''))
+        return candidates.filtered(
+            lambda move: self.currency_id.is_zero(move.amount_total - refund_amount))[:1]
+
+    def _match_shopify_refund_amount(self, move, refund_amount):
+        """Add a tax-free difference line so Odoo equals Shopify's transaction."""
+        difference = refund_amount - move.amount_total
+        if move.currency_id.is_zero(difference):
+            return
+        adjustment_product = (self.shopify_instance_id.refund_adjustment_product_id or
+                              self.env.ref('shopify_ept.shopify_refund_adjustment_product', False))
+        line_vals = {
+            'move_id': move.id,
+            'product_id': adjustment_product.id,
+            'name': _('Shopify refund amount adjustment'),
+            'quantity': 1,
+            'price_unit': difference,
+            'tax_ids': [(6, 0, [])],
+        }
+        self.env['account.move.line'].with_context(check_move_validity=False).create(line_vals)
+
     def create_move_and_delete_not_necessary_line(self, refunds_data, invoices, created_by, shopify_financial_status):
         """This method is used to create a reverse move of invoice and delete the invoice lines from the newly
             created move which product not refunded in Shopify.
@@ -2956,7 +3018,7 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         delete_move_lines = self.env['account.move.line']
         shopify_line_ids = []
         shopify_line_ids_with_qty = {}
-        for refund_line in refunds_data.get('refund_line_items'):
+        for refund_line in (refunds_data.get('refund_line_items') or []):
             shopify_line_ids.append(refund_line.get('line_item_id'))
             # shopify_line_ids_with_qty.update({refund_line.get('line_item_id'): refund_line.get('quantity')})
             refund_line_item_id = refund_line.get('line_item_id')
@@ -2967,7 +3029,9 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
             else:
                 shopify_line_ids_with_qty.update({refund_line_item_id: refund_line.get('quantity')})
 
-        refund_date = self.convert_order_date(refunds_data)
+        refund_date = self.convert_order_date({
+            'created_at': refunds_data.get('processed_at') or refunds_data.get('created_at')
+        })
         move_reversal = self.env["account.move.reversal"].with_context(
             {"active_model": "account.move", "active_ids": invoices[0].ids}, check_move_validity=False).create(
             {"reason": "Partially Refunded from shopify" if len(refunds_data) > 1 else refunds_data.get("note"),
@@ -2984,14 +3048,20 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         total_sale_line_qty = 0.0
         need_to_apply_discount = True
         for new_move_line in new_move.invoice_line_ids:
+            if not shopify_line_ids:
+                delete_move_lines += new_move_line
+                continue
             sale_line_qty = new_move_line.sale_line_ids.product_uom_qty
             shopify_line_id = new_move_line.sale_line_ids.shopify_line_id
-            if need_to_apply_discount and new_move_line.product_id.id == self.shopify_instance_id.discount_product_id.id:
+            if (need_to_apply_discount and total_sale_line_qty and
+                    new_move_line.product_id.id == self.shopify_instance_id.discount_product_id.id):
                 new_move_line.price_unit = new_move_line.price_unit / total_sale_line_qty * total_qty
             elif shopify_line_id and int(shopify_line_id) not in shopify_line_ids:
                 delete_move_lines += new_move_line
                 need_to_apply_discount = False
                 # delete_move_lines.compute_all_tax_dirty = True
+            elif not shopify_line_id:
+                delete_move_lines += new_move_line
             else:
                 new_move_line.quantity = shopify_line_ids_with_qty.get(int(shopify_line_id))
                 # new_move_line.compute_all_tax_dirty = True

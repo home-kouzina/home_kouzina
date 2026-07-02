@@ -18,6 +18,12 @@ class AccountMove(models.Model):
     is_shopify_multi_payment = fields.Boolean("Multi Payments?", default=False, copy=False,
                                               help="It is used to identify that order has multi-payment gateway or not")
 
+    _sql_constraints = [
+        ('shopify_refund_instance_unique',
+         'unique(shopify_refund_id, shopify_instance_id)',
+         'A Shopify refund can only create one Odoo credit note per instance.'),
+    ]
+
     def action_open_refund_wizard(self):
         """This method used to open a wizard for Refund order in Shopify.
             @param : self
@@ -73,4 +79,3 @@ class AccountMove(models.Model):
         if self._context.get('is_shopify_reverse_move_ept', False):
             return reverse_moves
         return super(AccountMove, self)._reconcile_reversed_moves(reverse_moves, move_reverse_cancel)
-

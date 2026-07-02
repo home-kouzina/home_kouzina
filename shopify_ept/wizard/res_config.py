@@ -638,7 +638,10 @@ class ResConfigSettings(models.TransientModel):
                 instance.configure_shopify_product_webhook()
             if customer_webhook_changed:
                 instance.configure_shopify_customer_webhook()
-            if order_webhook_changed:
+            # Also reconcile topics while enabled so module upgrades add newly
+            # supported topics such as refunds/create without requiring users
+            # to disable and re-enable order webhooks.
+            if order_webhook_changed or self.create_shopify_orders_webhook:
                 instance.configure_shopify_order_webhook()
 
         if not self.show_net_profit_report and exist_module:
@@ -839,7 +842,7 @@ class ResConfigSettings(models.TransientModel):
                 instance.configure_shopify_product_webhook()
             if customer_webhook_changed:
                 instance.configure_shopify_customer_webhook()
-            if order_webhook_changed:
+            if order_webhook_changed or self.create_shopify_orders_webhook:
                 instance.configure_shopify_order_webhook()
 
             company = instance.shopify_company_id

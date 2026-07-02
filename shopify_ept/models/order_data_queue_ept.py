@@ -198,10 +198,22 @@ class ShopifyOrderDataQueueEpt(models.Model):
                     if len(order_ids) >= 250:
                         order_queue_list = self.list_all_orders(order_ids, instance, created_by, queue_type)
                         order_queues += order_queue_list
-                instance.last_date_order_import = to_date - timedelta(days=2)
+            # Refunds can be created long after the original order and are not
+            # limited to the configured fulfillment statuses.  Always make one
+            # recovery request for updated orders which contain refunds.  This
+            # makes the scheduler a safety net for missed webhooks.
+            refund_orders = self.shopify_refund_order_request(instance, from_date, to_date)
+            if refund_orders:
+                order_queues += order_data_queue_line_obj.create_order_data_queue_line(
+                    refund_orders, instance, queue_type, created_by)
+            instance.last_date_order_import = to_date - timedelta(days=2)
         elif order_type == "shipped":
             order_queues = self.shopify_shipped_order_request(instance, from_date, to_date, created_by="import",
                                                               order_type="shipped")
+            refund_orders = self.shopify_refund_order_request(instance, from_date, to_date)
+            if refund_orders:
+                order_queues += order_data_queue_line_obj.create_order_data_queue_line(
+                    refund_orders, instance, 'shipped', created_by)
             instance.last_shipped_order_import_date = to_date - timedelta(days=2)
         else:
             if order_type == "buy_with_prime" and instance.import_buy_with_prime_shopify_order:
@@ -219,6 +231,46 @@ class ShopifyOrderDataQueueEpt(models.Model):
                 order_queue_cron.write(
                     {'active': True, 'nextcall': datetime.now() + timedelta(seconds=120)})
         return order_queues
+
+    def shopify_refund_order_request(self, instance, from_date, to_date):
+        """Return every updated order containing refund data.
+
+        Shopify refunds are order updates, but their orders may no longer match
+        the fulfillment-status filters configured for normal order imports.
+        Fetching status=any without a fulfillment filter closes that gap.
+        """
+        from_date, to_date = self.convert_dates_by_timezone(instance, from_date, to_date)
+        try:
+            result = shopify.Order().find(
+                status="any", updated_at_min=from_date, updated_at_max=to_date, limit=250)
+        except Exception as error:
+            raise UserError(error)
+
+        refund_orders = []
+        while result:
+            refund_orders.extend([order for order in result if order.to_dict().get("refunds")])
+            link = (result.metadata.get('headers', {}).get('Link') or
+                    result.metadata.get('headers', {}).get('link') or
+                    shopify.ShopifyResource.connection.response.headers.get('Link') or
+                    shopify.ShopifyResource.connection.response.headers.get('link'))
+            next_page_info = False
+            if link and isinstance(link, str):
+                for page_link in link.split(','):
+                    if 'rel="next"' in page_link:
+                        next_page_info = page_link.split(';')[0].strip('<>').split('page_info=')[1]
+                        break
+            if not next_page_info:
+                break
+            try:
+                result = shopify.Order().find(limit=250, page_info=next_page_info)
+            except ClientError as error:
+                if (hasattr(error, "response") and error.response.code == 429 and
+                        error.response.msg == "Too Many Requests"):
+                    time.sleep(int(float(error.response.headers.get('Retry-After', 5))))
+                    result = shopify.Order().find(limit=250, page_info=next_page_info)
+                else:
+                    raise
+        return refund_orders
 
     def shopify_order_request(self, instance, from_date, to_date, order_type):
         """ This method used to pull the orders from shopify Store to Odoo.
