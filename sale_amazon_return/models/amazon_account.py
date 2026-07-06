@@ -16,6 +16,12 @@ from .. import utils as return_utils
 
 _logger = logging.getLogger(__name__)
 
+# Amazon rejects GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE and
+# GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA report requests with a FATAL status when the
+# requested date range is too wide, so historical backfills are split into chunks.
+HISTORICAL_BACKFILL_DAYS = 730
+HISTORICAL_CHUNK_DAYS = 60
+
 
 def _normalize_report_header(header):
     normalized_header = re.sub(r'[^a-z0-9]+', '_', header.strip().lower()).strip('_')
@@ -61,6 +67,12 @@ class AmazonAccount(models.Model):
     return_report_start = fields.Datetime(readonly=True)
     return_report_end = fields.Datetime(readonly=True)
     return_sync_error = fields.Text(readonly=True)
+    return_backfill_cursor = fields.Datetime(
+        readonly=True, help="How far back the FBM historical backfill has progressed."
+    )
+    return_backfill_target = fields.Datetime(
+        readonly=True, help="Oldest date the current FBM historical backfill should reach."
+    )
     last_fbm_return_report_rows = fields.Integer(
         string="Last FBM Report Rows",
         help="Number of return rows read from the last completed FBM report.",
@@ -86,6 +98,12 @@ class AmazonAccount(models.Model):
     fba_return_report_start = fields.Datetime(readonly=True)
     fba_return_report_end = fields.Datetime(readonly=True)
     fba_return_sync_error = fields.Text(readonly=True)
+    fba_return_backfill_cursor = fields.Datetime(
+        readonly=True, help="How far back the FBA historical backfill has progressed."
+    )
+    fba_return_backfill_target = fields.Datetime(
+        readonly=True, help="Oldest date the current FBA historical backfill should reach."
+    )
     last_fba_return_report_rows = fields.Integer(
         string="Last FBA Report Rows",
         help="Number of return rows read from the last completed FBA report.",
@@ -209,9 +227,11 @@ class AmazonAccount(models.Model):
     def _request_historical_return_report(self):
         self.ensure_one()
         amazon_utils.ensure_account_is_set_up(self)
-        end_time = fields.Datetime.now()
-        # Backfill history for 2 years by default
-        start_time = end_time - timedelta(days=730)
+        target_start = self.return_backfill_target or (
+            fields.Datetime.now() - timedelta(days=HISTORICAL_BACKFILL_DAYS)
+        )
+        end_time = self.return_backfill_cursor or fields.Datetime.now()
+        start_time = max(end_time - timedelta(days=HISTORICAL_CHUNK_DAYS), target_start)
         payload = {
             'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
             'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
@@ -227,14 +247,18 @@ class AmazonAccount(models.Model):
             'return_report_start': start_time,
             'return_report_end': end_time,
             'return_sync_error': False,
+            'return_backfill_target': target_start,
+            'return_backfill_cursor': start_time,
         })
 
     def _request_historical_fba_return_report(self):
         self.ensure_one()
         amazon_utils.ensure_account_is_set_up(self)
-        end_time = fields.Datetime.now()
-        # Backfill history for 2 years by default
-        start_time = end_time - timedelta(days=730)
+        target_start = self.fba_return_backfill_target or (
+            fields.Datetime.now() - timedelta(days=HISTORICAL_BACKFILL_DAYS)
+        )
+        end_time = self.fba_return_backfill_cursor or fields.Datetime.now()
+        start_time = max(end_time - timedelta(days=HISTORICAL_CHUNK_DAYS), target_start)
         payload = {
             'reportType': 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
             'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
@@ -250,6 +274,8 @@ class AmazonAccount(models.Model):
             'fba_return_report_start': start_time,
             'fba_return_report_end': end_time,
             'fba_return_sync_error': False,
+            'fba_return_backfill_target': target_start,
+            'fba_return_backfill_cursor': start_time,
         })
 
     def _sync_historical_returns(self, force=False):
@@ -266,9 +292,6 @@ class AmazonAccount(models.Model):
                     account._request_historical_return_report()
                 continue
         return
-
-    # Note: _request_fba_return_report is defined earlier with a default of days=0
-    # to support daily (today) requests and an optional days parameter.
 
     def _process_return_report(self):
         self.ensure_one()
@@ -293,16 +316,33 @@ class AmazonAccount(models.Model):
                 self, normalized_rows
             )
             self.last_fbm_return_report_rows = len(imported_returns)
+            self.return_sync_error = False
         elif status == 'FATAL':
-            raise UserError(_("Amazon failed to generate the return report."))
+            if not self.return_backfill_target:
+                raise UserError(_("Amazon failed to generate the return report."))
+            _logger.warning(
+                "Amazon failed to generate the FBM return report for account %s covering "
+                "%s to %s; skipping this period during historical backfill.",
+                self.id, self.return_report_start, self.return_report_end,
+            )
+            self.return_sync_error = _(
+                "Amazon failed to generate the return report for one backfill period; "
+                "that period was skipped."
+            )
+        else:
+            self.return_sync_error = False
 
         self.write({
             'last_returns_sync': self.return_report_end or fields.Datetime.now(),
             'return_report_id': False,
             'return_report_start': False,
             'return_report_end': False,
-            'return_sync_error': False,
         })
+        if self.return_backfill_target:
+            if self.return_backfill_cursor and self.return_backfill_cursor > self.return_backfill_target:
+                self._request_historical_return_report()
+            else:
+                self.write({'return_backfill_cursor': False, 'return_backfill_target': False})
 
     def _process_fba_return_report(self):
         self.ensure_one()
@@ -327,16 +367,36 @@ class AmazonAccount(models.Model):
                 self, normalized_rows
             )
             self.last_fba_return_report_rows = len(imported_returns)
+            self.fba_return_sync_error = False
         elif status == 'FATAL':
-            raise UserError(_("Amazon failed to generate the FBA return report."))
+            if not self.fba_return_backfill_target:
+                raise UserError(_("Amazon failed to generate the FBA return report."))
+            _logger.warning(
+                "Amazon failed to generate the FBA return report for account %s covering "
+                "%s to %s; skipping this period during historical backfill.",
+                self.id, self.fba_return_report_start, self.fba_return_report_end,
+            )
+            self.fba_return_sync_error = _(
+                "Amazon failed to generate the FBA return report for one backfill period; "
+                "that period was skipped."
+            )
+        else:
+            self.fba_return_sync_error = False
 
         self.write({
             'last_fba_returns_sync': self.fba_return_report_end or fields.Datetime.now(),
             'fba_return_report_id': False,
             'fba_return_report_start': False,
             'fba_return_report_end': False,
-            'fba_return_sync_error': False,
         })
+        if self.fba_return_backfill_target:
+            if (
+                self.fba_return_backfill_cursor
+                and self.fba_return_backfill_cursor > self.fba_return_backfill_target
+            ):
+                self._request_historical_fba_return_report()
+            else:
+                self.write({'fba_return_backfill_cursor': False, 'fba_return_backfill_target': False})
 
     def _sync_returns(self, force=False):
         accounts = self or self.search([])
@@ -384,3 +444,4 @@ class AmazonAccount(models.Model):
                 self.fba_return_sync_error = str(error)
             else:
                 self.return_sync_error = str(error)
+        
