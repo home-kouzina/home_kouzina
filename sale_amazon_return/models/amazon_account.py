@@ -238,8 +238,15 @@ class AmazonAccount(models.Model):
             'dataStartTime': start_time.isoformat() + 'Z',
             'dataEndTime': end_time.isoformat() + 'Z',
         }
+        _logger.info(
+            "Requesting historical FBM return report chunk for account %s: %s", self.id, payload
+        )
         response = amazon_utils.make_sp_api_request(
             self, 'createReturnReport', payload=payload, method='POST'
+        )
+        _logger.info(
+            "Amazon accepted historical FBM return report chunk for account %s: %s",
+            self.id, response,
         )
         self.write({
             'return_report_id': response['reportId'],
@@ -265,8 +272,15 @@ class AmazonAccount(models.Model):
             'dataStartTime': start_time.isoformat() + 'Z',
             'dataEndTime': end_time.isoformat() + 'Z',
         }
+        _logger.info(
+            "Requesting historical FBA return report chunk for account %s: %s", self.id, payload
+        )
         response = amazon_utils.make_sp_api_request(
             self, 'createReturnReport', payload=payload, method='POST'
+        )
+        _logger.info(
+            "Amazon accepted historical FBA return report chunk for account %s: %s",
+            self.id, response,
         )
         self.write({
             'fba_return_report_id': response['reportId'],
@@ -298,6 +312,10 @@ class AmazonAccount(models.Model):
         response = amazon_utils.make_sp_api_request(
             self, 'getReturnReport', path_parameter=self.return_report_id
         )
+        _logger.info(
+            "FBM return report status for account %s (period %s to %s): %s",
+            self.id, self.return_report_start, self.return_report_end, response,
+        )
         status = response['processingStatus']
         self.return_report_status = status
         if status in ('IN_QUEUE', 'IN_PROGRESS'):
@@ -305,29 +323,36 @@ class AmazonAccount(models.Model):
         if status == 'DONE':
             document_id = response.get('reportDocumentId')
             if not document_id:
-                raise UserError(_("Amazon completed the return report without a document."))
-            report_content = return_utils.download_restricted_report_document(self, document_id)
-            rows = csv.DictReader(io.StringIO(report_content), delimiter='\t')
-            normalized_rows = ({
-                _normalize_report_header(key): value.strip() if value else ''
-                for key, value in row.items() if key
-            } for row in rows)
-            imported_returns = self.env['amazon.return']._import_report_rows(
-                self, normalized_rows
-            )
-            self.last_fbm_return_report_rows = len(imported_returns)
-            self.return_sync_error = False
+                _logger.warning(
+                    "Amazon completed the FBM return report for account %s without a "
+                    "document: %s", self.id, response,
+                )
+                self.return_sync_error = _(
+                    "Amazon completed the return report without a document."
+                )
+            else:
+                report_content = return_utils.download_restricted_report_document(
+                    self, document_id
+                )
+                rows = csv.DictReader(io.StringIO(report_content), delimiter='\t')
+                normalized_rows = ({
+                    _normalize_report_header(key): value.strip() if value else ''
+                    for key, value in row.items() if key
+                } for row in rows)
+                imported_returns = self.env['amazon.return']._import_report_rows(
+                    self, normalized_rows
+                )
+                self.last_fbm_return_report_rows = len(imported_returns)
+                self.return_sync_error = False
         elif status == 'FATAL':
-            if not self.return_backfill_target:
-                raise UserError(_("Amazon failed to generate the return report."))
             _logger.warning(
                 "Amazon failed to generate the FBM return report for account %s covering "
-                "%s to %s; skipping this period during historical backfill.",
-                self.id, self.return_report_start, self.return_report_end,
+                "%s to %s. Full response: %s",
+                self.id, self.return_report_start, self.return_report_end, response,
             )
             self.return_sync_error = _(
-                "Amazon failed to generate the return report for one backfill period; "
-                "that period was skipped."
+                "Amazon failed to generate the return report for the period %(start)s to "
+                "%(end)s.", start=self.return_report_start, end=self.return_report_end,
             )
         else:
             self.return_sync_error = False
@@ -349,6 +374,10 @@ class AmazonAccount(models.Model):
         response = amazon_utils.make_sp_api_request(
             self, 'getReturnReport', path_parameter=self.fba_return_report_id
         )
+        _logger.info(
+            "FBA return report status for account %s (period %s to %s): %s",
+            self.id, self.fba_return_report_start, self.fba_return_report_end, response,
+        )
         status = response['processingStatus']
         self.fba_return_report_status = status
         if status in ('IN_QUEUE', 'IN_PROGRESS'):
@@ -356,29 +385,36 @@ class AmazonAccount(models.Model):
         if status == 'DONE':
             document_id = response.get('reportDocumentId')
             if not document_id:
-                raise UserError(_("Amazon completed the FBA return report without a document."))
-            report_content = return_utils.download_restricted_report_document(self, document_id)
-            rows = csv.DictReader(io.StringIO(report_content), delimiter='\t')
-            normalized_rows = ({
-                _normalize_report_header(key): value.strip() if value else ''
-                for key, value in row.items() if key
-            } for row in rows)
-            imported_returns = self.env['amazon.return']._import_fba_report_rows(
-                self, normalized_rows
-            )
-            self.last_fba_return_report_rows = len(imported_returns)
-            self.fba_return_sync_error = False
+                _logger.warning(
+                    "Amazon completed the FBA return report for account %s without a "
+                    "document: %s", self.id, response,
+                )
+                self.fba_return_sync_error = _(
+                    "Amazon completed the FBA return report without a document."
+                )
+            else:
+                report_content = return_utils.download_restricted_report_document(
+                    self, document_id
+                )
+                rows = csv.DictReader(io.StringIO(report_content), delimiter='\t')
+                normalized_rows = ({
+                    _normalize_report_header(key): value.strip() if value else ''
+                    for key, value in row.items() if key
+                } for row in rows)
+                imported_returns = self.env['amazon.return']._import_fba_report_rows(
+                    self, normalized_rows
+                )
+                self.last_fba_return_report_rows = len(imported_returns)
+                self.fba_return_sync_error = False
         elif status == 'FATAL':
-            if not self.fba_return_backfill_target:
-                raise UserError(_("Amazon failed to generate the FBA return report."))
             _logger.warning(
                 "Amazon failed to generate the FBA return report for account %s covering "
-                "%s to %s; skipping this period during historical backfill.",
-                self.id, self.fba_return_report_start, self.fba_return_report_end,
+                "%s to %s. Full response: %s",
+                self.id, self.fba_return_report_start, self.fba_return_report_end, response,
             )
             self.fba_return_sync_error = _(
-                "Amazon failed to generate the FBA return report for one backfill period; "
-                "that period was skipped."
+                "Amazon failed to generate the FBA return report for the period %(start)s to "
+                "%(end)s.", start=self.fba_return_report_start, end=self.fba_return_report_end,
             )
         else:
             self.fba_return_sync_error = False
