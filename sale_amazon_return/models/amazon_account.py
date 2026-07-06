@@ -210,7 +210,8 @@ class AmazonAccount(models.Model):
         self.ensure_one()
         amazon_utils.ensure_account_is_set_up(self)
         end_time = fields.Datetime.now()
-        start_time = end_time - timedelta(days=3650)
+        # Backfill history for 2 years by default
+        start_time = end_time - timedelta(days=730)
         payload = {
             'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
             'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
@@ -232,7 +233,8 @@ class AmazonAccount(models.Model):
         self.ensure_one()
         amazon_utils.ensure_account_is_set_up(self)
         end_time = fields.Datetime.now()
-        start_time = end_time - timedelta(days=3650)
+        # Backfill history for 2 years by default
+        start_time = end_time - timedelta(days=730)
         payload = {
             'reportType': 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
             'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
@@ -263,44 +265,10 @@ class AmazonAccount(models.Model):
                 else:
                     account._request_historical_return_report()
                 continue
-        payload = {
-            'reportType': 'GET_FLAT_FILE_RETURNS_DATA_BY_RETURN_DATE',
-            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
-            'dataStartTime': start_time.isoformat() + 'Z',
-            'dataEndTime': end_time.isoformat() + 'Z',
-        }
-        response = amazon_utils.make_sp_api_request(
-            self, 'createReturnReport', payload=payload, method='POST'
-        )
-        self.write({
-            'return_report_id': response['reportId'],
-            'return_report_status': 'IN_QUEUE',
-            'return_report_start': start_time,
-            'return_report_end': end_time,
-            'return_sync_error': False,
-        })
+        return
 
-    def _request_fba_return_report(self, days=60):
-        self.ensure_one()
-        amazon_utils.ensure_account_is_set_up(self)
-        end_time = fields.Datetime.now()
-        start_time = end_time - timedelta(days=days)
-        payload = {
-            'reportType': 'GET_FBA_FULFILLMENT_CUSTOMER_RETURNS_DATA',
-            'marketplaceIds': self.active_marketplace_ids.mapped('api_ref'),
-            'dataStartTime': start_time.isoformat() + 'Z',
-            'dataEndTime': end_time.isoformat() + 'Z',
-        }
-        response = amazon_utils.make_sp_api_request(
-            self, 'createReturnReport', payload=payload, method='POST'
-        )
-        self.write({
-            'fba_return_report_id': response['reportId'],
-            'fba_return_report_status': 'IN_QUEUE',
-            'fba_return_report_start': start_time,
-            'fba_return_report_end': end_time,
-            'fba_return_sync_error': False,
-        })
+    # Note: _request_fba_return_report is defined earlier with a default of days=0
+    # to support daily (today) requests and an optional days parameter.
 
     def _process_return_report(self):
         self.ensure_one()
