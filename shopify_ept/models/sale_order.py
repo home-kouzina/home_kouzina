@@ -671,32 +671,51 @@ class SaleOrder(models.Model):
         shopify_order_data_queue_obj = self.env["shopify.order.data.queue.ept"]
         instance.connect_in_shopify()
         order_ids = shopify_order_data_queue_obj.shopify_order_request(instance, from_date, to_date, order_type="any")
-        for order in order_ids:
-            order_data = order.to_dict()
-            if order_data.get('cancel_reason'):
-                message = ""
-                if order_data.get('cancel_reason') == "customer":
-                    message = "Customer changed/canceled Order"
-                elif order_data.get('cancel_reason') == "fraud":
-                    message = "Fraudulent order"
-                elif order_data.get('cancel_reason') == "inventory":
-                    message = "Items unavailable"
-                elif order_data.get('cancel_reason') == "declined":
-                    message = "Payment declined"
-                elif order_data.get('cancel_reason') == "other":
-                    message = "Other"
-                sale_order = self.search_existing_shopify_order(order_data, instance, order_data.get("order_number"))
-                if sale_order and sale_order.state != 'cancel':
-                    sale_order.write({'canceled_in_shopify': True})
-                    sale_order.message_post(
-                        body=_("The reason for the order cancellation on this Shopify store is that %s.", message))
-                    context = {
-                                'shopify_status': order_data.get('financial_status'),
-                                'order_data': order_data,
-                                'created_by': 'import',
-                                'queue_line': False,
-                            }
-                    sale_order.with_context(context).cancel_shopify_order()
+
+        while order_ids:
+            for order in order_ids:
+                order_data = order.to_dict()
+                if order_data.get('cancel_reason'):
+                    message = ""
+                    if order_data.get('cancel_reason') == "customer":
+                        message = "Customer changed/canceled Order"
+                    elif order_data.get('cancel_reason') == "fraud":
+                        message = "Fraudulent order"
+                    elif order_data.get('cancel_reason') == "inventory":
+                        message = "Items unavailable"
+                    elif order_data.get('cancel_reason') == "declined":
+                        message = "Payment declined"
+                    elif order_data.get('cancel_reason') == "other":
+                        message = "Other"
+                    sale_order = self.search_existing_shopify_order(order_data, instance, order_data.get("order_number"))
+                    if sale_order and sale_order.state != 'cancel':
+                        sale_order.write({'canceled_in_shopify': True})
+                        sale_order.message_post(
+                            body=_("The reason for the order cancellation on this Shopify store is that %s.", message))
+                        context = {
+                            'shopify_status': order_data.get('financial_status'),
+                            'order_data': order_data,
+                            'created_by': 'import',
+                            'queue_line': False,
+                        }
+                        sale_order.with_context(context).cancel_shopify_order()
+
+            # ---- pagination: follow the Link header instead of stopping at the first 250 ----
+            link = (order_ids.metadata.get('headers', {}).get('Link') or
+                    order_ids.metadata.get('headers', {}).get('link') or
+                    shopify.ShopifyResource.connection.response.headers.get('Link') or
+                    shopify.ShopifyResource.connection.response.headers.get('link'))
+            next_page_info = None
+            if link and isinstance(link, str):
+                for page_link in link.split(','):
+                    if page_link.find('next') > 0:
+                        next_page_info = page_link.split(';')[0].strip('<>').split('page_info=')[1]
+                        break
+            if next_page_info:
+                order_ids = shopify.Order().find(limit=250, page_info=next_page_info)
+            else:
+                order_ids = None
+
         instance.last_cancel_order_import_date = to_date - timedelta(days=2)
         return True
 
