@@ -2784,45 +2784,64 @@ You can take the following actions manually:\n 1. Reserve Order: If the order ha
         return data
 
     def cancel_shopify_order(self):
-            if "done" in self.picking_ids.mapped("state"):
-                for picking_id in self.picking_ids:
-                    picking_id.write({'updated_in_shopify': True})
-                    picking_id.message_post(
-                        body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
-                return False
+        """
+        Cancels the sale order when it is cancelled in Shopify Store.
+        Handles three cases:
+        1. Shopify reports a real refund -> post any draft invoice, then create the refund.
+        2. No real refund, but invoice is already posted -> reverse it fully (credit note),
+            since the order is cancelled and no money was actually kept.
+        3. No real refund, invoice still draft -> simply cancel the draft invoice.
+        """
+        if "done" in self.picking_ids.mapped("state"):
+            for picking_id in self.picking_ids:
+                picking_id.write({'updated_in_shopify': True})
+                picking_id.message_post(
+                    body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
+            return False
 
-            context_dict = self.env.context
-            shopify_status = context_dict.get('shopify_status')
-            order_data = context_dict.get('order_data') or {}
-            queue_line = context_dict.get('queue_line')
-            created_by = context_dict.get('created_by')
-            has_refund_data = shopify_status in ("refunded", "partially_refunded") and order_data.get("refunds")
+        context_dict = self.env.context
+        shopify_status = context_dict.get('shopify_status')
+        order_data = context_dict.get('order_data') or {}
+        queue_line = context_dict.get('queue_line')
+        created_by = context_dict.get('created_by')
+        has_refund_data = shopify_status in ("refunded", "partially_refunded") and order_data.get("refunds")
 
-            self.with_context(disable_cancel_warning=True).action_cancel()
-            self.canceled_in_shopify = True
-            self.write({'shopify_order_status': 'Canceled'})
+        self.with_context(disable_cancel_warning=True).action_cancel()
+        self.canceled_in_shopify = True
+        self.write({'shopify_order_status': 'Canceled'})
 
-            if has_refund_data:
-                # Money actually moved on this order - post any draft invoice instead of
-                # cancelling it, so the refund can be attached to it.
-                draft_invoices = self.invoice_ids.filtered(
-                    lambda x: x.move_type == 'out_invoice' and x.state == 'draft')
-                for invoice_id in draft_invoices:
-                    invoice_id.message_post(
-                        body=_("Order %s was canceled in Shopify with a refund on it; posting "
-                            "this invoice automatically so the refund can be recorded.",
-                            self.shopify_order_number))
-                    invoice_id.action_post()
-                self.process_order_refund_data_ept(
-                    shopify_status, order_data, self, created_by,
-                    queue_line.shopify_instance_id if queue_line else self.shopify_instance_id,
-                    queue_line)
-            elif "draft" in self.invoice_ids.mapped("state"):
-                for invoice_id in self.invoice_ids:
-                    invoice_id.message_post(
-                        body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
-                    invoice_id.button_cancel()
-            return True
+        posted_invoices = self.invoice_ids.filtered(lambda x: x.move_type == 'out_invoice' and x.state == 'posted')
+        draft_invoices = self.invoice_ids.filtered(lambda x: x.move_type == 'out_invoice' and x.state == 'draft')
+
+        if has_refund_data:
+            for invoice_id in draft_invoices:
+                invoice_id.message_post(
+                    body=_("Order %s was canceled in Shopify with a refund on it; posting this invoice "
+                        "automatically so the refund can be recorded.", self.shopify_order_number))
+                invoice_id.action_post()
+            self.process_order_refund_data_ept(
+                shopify_status, order_data, self, created_by,
+                queue_line.shopify_instance_id if queue_line else self.shopify_instance_id, queue_line)
+
+        elif posted_invoices:
+            # Order cancelled, invoice already posted, but Shopify shows no real refund
+            # (e.g. COD marked paid before delivery, later voided). Reverse it fully so
+            # revenue doesn't sit in the books for a sale that never actually completed.
+            reversal = self.env['account.move.reversal'].with_context(
+                active_model='account.move', active_ids=posted_invoices.ids
+            ).create({
+                'reason': _('Order %s cancelled in Shopify \u2014 no payment collected', self.shopify_order_number),
+                'journal_id': posted_invoices[0].journal_id.id,
+            })
+            reversal.reverse_moves()
+
+        elif draft_invoices:
+            for invoice_id in draft_invoices:
+                invoice_id.message_post(
+                    body=_("Order %s has been canceled in the Shopify store.", self.shopify_order_number))
+                invoice_id.button_cancel()
+
+        return True
 
     def fulfilled_shopify_order(self, order_data):
         """
