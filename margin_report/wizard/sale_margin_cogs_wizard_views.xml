@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_margin_cogs_wizard_form" model="ir.ui.view">
+        <field name="name">sale.margin.cogs.wizard.form</field>
+        <field name="model">sale.margin.cogs.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Backfill COGS">
+                <p class="text-muted">
+                    Use this to fix old orders showing 0 COGS in the Margin
+                    Report. Pick a date range (and optionally a single
+                    product), enter the COS value, and apply.
+                </p>
+                <group>
+                    <group>
+                        <field name="date_from"/>
+                        <field name="date_to"/>
+                    </group>
+                    <group>
+                        <field name="product_id"/>
+                        <field name="cogs_unit_price"/>
+                        <field name="only_missing"/>
+                    </group>
+                </group>
+                <group>
+                    <field name="line_count" string="Lines that will be updated" readonly="1"/>
+                </group>
+                <footer>
+                    <button name="action_apply_cogs" type="object"
+                            string="Apply" class="btn-primary"
+                            confirm="This will write the COS value to the matching sale order lines. Continue?"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sale_margin_cogs_wizard" model="ir.actions.act_window">
+        <field name="name">Backfill COGS</field>
+        <field name="res_model">sale.margin.cogs.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

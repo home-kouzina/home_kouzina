@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_sale_margin_cogs_bulk_wizard_form" model="ir.ui.view">
+        <field name="name">sale.margin.cogs.bulk.wizard.form</field>
+        <field name="model">sale.margin.cogs.bulk.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Bulk Backfill COGS from CSV">
+                <group invisible="state != 'draft'">
+                    <p class="text-muted">
+                        Upload a CSV with a <b>SKU</b> column and a <b>COS</b>
+                        column (any other columns, like Name/EAN/Pack, are
+                        ignored). Every SKU's COS will be written to the
+                        matching sale order lines. Optionally restrict to a
+                        date range.
+                    </p>
+                    <group>
+                        <group string="Date Range (optional)">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group string="Options">
+                            <field name="only_missing"/>
+                        </group>
+                    </group>
+                    <group>
+                        <field name="csv_filename" invisible="1"/>
+                        <field name="csv_file" filename="csv_filename" required="1"/>
+                    </group>
+                </group>
+
+                <group invisible="state != 'done'">
+                    <field name="result_summary" readonly="1" widget="text" nolabel="1"/>
+                </group>
+
+                <footer>
+                    <button name="action_apply_bulk_cogs" type="object"
+                            string="Apply" class="btn-primary"
+                            invisible="state != 'draft'"
+                            confirm="This will write the COS values from the CSV to the matching sale order lines. Continue?"/>
+                    <button name="action_back_to_draft" type="object"
+                            string="Run Another File" class="btn-secondary"
+                            invisible="state != 'done'"/>
+                    <button string="Close" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_sale_margin_cogs_bulk_wizard" model="ir.actions.act_window">
+        <field name="name">Bulk Backfill COGS (CSV)</field>
+        <field name="res_model">sale.margin.cogs.bulk.wizard</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+    </record>
+</odoo>

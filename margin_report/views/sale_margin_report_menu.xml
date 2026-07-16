@@ -7,4 +7,20 @@
         action="action_sale_margin_report"
         sequence="26"
         groups="sales_team.group_sale_salesman"/>
+
+    <menuitem
+        id="menu_sale_margin_cogs_wizard"
+        name="Backfill COGS"
+        parent="sale.menu_sale_report"
+        action="action_sale_margin_cogs_wizard"
+        sequence="27"
+        groups="sales_team.group_sale_manager"/>
+
+    <menuitem
+        id="menu_sale_margin_cogs_bulk_wizard"
+        name="Bulk Backfill COGS (CSV)"
+        parent="sale.menu_sale_report"
+        action="action_sale_margin_cogs_bulk_wizard"
+        sequence="28"
+        groups="sales_team.group_sale_manager"/>
 </odoo>
