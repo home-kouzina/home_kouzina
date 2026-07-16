@@ -8,6 +8,8 @@
     'data': [
         'security/ir.model.access.csv',
         'views/sale_margin_report_views.xml',
+        'wizard/sale_margin_cogs_wizard_views.xml',
+        'wizard/sale_margin_cogs_bulk_wizard_views.xml',
         'views/sale_margin_report_menu.xml',
     ],
     'installable': True,
