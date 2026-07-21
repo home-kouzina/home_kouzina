@@ -1,15 +1,13 @@
-from datetime import date
 from collections import Counter
 
 # ==================== CONFIG — change dates here only ====================
 FROM_DAY = '2025-07-01'          # include cancellations ON/AFTER this date
-TO_DAY   = '2026-07-01'          # EXCLUDE cancellations on/after this (i.e. up to 2026-06-30)
+TO_DAY   = '2026-07-01'          # EXCLUDE on/after this (i.e. up to 2026-06-30)
 
-# Shopify fetch window on updated_at — kept wider than the range to catch late-updated orders
 FETCH_UPDATED_MIN = '2025-07-01T00:00:00+05:30'
 FETCH_UPDATED_MAX = '2026-07-21T00:00:00+05:30'
 
-DRY_RUN    = True                # True = report only, NO ledger writes. Flip to False to actually run.
+DRY_RUN    = True                # True = report only, NO writes. Flip to False to run for real.
 REASON_TAG = 'Order cancelled in Shopify \u2014 no payment collected (Jul 2025\u2013Jun 2026 backfill)'
 # =========================================================================
 
@@ -34,12 +32,11 @@ for o in all_orders:
     ca = d.get('cancelled_at')
     if not ca:
         continue
-    day = ca[:10]                       # 'YYYY-MM-DD'
+    day = ca[:10]
     if FROM_DAY <= day < TO_DAY:
         cancel_date_map[d.get('name')] = day
 
 print('Cancelled orders within range %s .. %s : %d' % (FROM_DAY, TO_DAY, len(cancel_date_map)))
-# per-month breakdown, useful for reconciliation
 by_month = Counter(v[:7] for v in cancel_date_map.values())
 for m in sorted(by_month):
     print('   %s : %d' % (m, by_month[m]))
@@ -75,41 +72,22 @@ for so_id, so_name in cancelled_rows:
 print()
 print('Total orders needing a credit note:', len(needs_fix))
 
-# ---- 5. Fiscal-lock pre-check (a full year WILL cross closed periods) ----
-lock_date = env.company.fiscalyear_lock_date      # date or False (hard lock)
-soft_lock = env.company.period_lock_date          # date or False (advisers-only lock)
-print('Fiscal year lock date:', lock_date, '| period lock date:', soft_lock)
-
-runnable, locked = [], []
-for so_id, so_name, invoice_ids, cancel_date in needs_fix:
-    cdate = fields.Date.from_string(cancel_date)
-    if lock_date and cdate <= lock_date:
-        locked.append((so_name, cancel_date))
-    else:
-        runnable.append((so_id, so_name, invoice_ids, cancel_date))
-
-if locked:
-    print('!! %d orders fall in a LOCKED period and will be skipped:' % len(locked))
-    for r in locked:
-        print('   LOCKED', r)
-
-# ---- 6. Totals to be reversed (runnable only) ----
+# ---- 5. Totals to be reversed ----
 total_amount = 0
-for so_id, so_name, invoice_ids, cancel_date in runnable:
+for so_id, so_name, invoice_ids, cancel_date in needs_fix:
     invoices = env['account.move'].browse(invoice_ids)
     total_amount += sum(invoices.mapped('amount_total'))
-print()
-print('Runnable now:', len(runnable), '| Total amount to be reversed:', total_amount)
-for r in runnable:
-    print('   ', r)
+print('Total amount to be reversed:', total_amount)
 
-# ---- 7. Execute (only when DRY_RUN = False) ----
+# ---- 6. Execute (only when DRY_RUN = False) ----
 if DRY_RUN:
     print()
-    print('DRY RUN — nothing written. Review the list above, then set DRY_RUN = False and re-run.')
+    print('DRY RUN — nothing written. Review above, set DRY_RUN = False, re-run.')
+    for r in needs_fix:
+        print('   WOULD CREATE', r)
 else:
     results = []
-    for so_id, so_name, invoice_ids, cancel_date in runnable:
+    for so_id, so_name, invoice_ids, cancel_date in needs_fix:
         try:
             invoices = env['account.move'].browse(invoice_ids)
             reversal = env['account.move.reversal'].with_context(
