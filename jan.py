@@ -2,12 +2,11 @@ from collections import Counter
 
 # ==================== CONFIG — change dates here only ====================
 FROM_DAY = '2025-07-01'          # include cancellations ON/AFTER this date
-TO_DAY   = '2026-07-01'          # EXCLUDE on/after this (i.e. up to 2026-06-30)
+TO_DAY   = '2026-07-01'          # EXCLUDE on/after this (up to 2026-06-30)
 
 FETCH_UPDATED_MIN = '2025-07-01T00:00:00+05:30'
 FETCH_UPDATED_MAX = '2026-07-21T00:00:00+05:30'
 
-DRY_RUN    = True                # True = report only, NO writes. Flip to False to run for real.
 REASON_TAG = 'Order cancelled in Shopify \u2014 no payment collected (Jul 2025\u2013Jun 2026 backfill)'
 # =========================================================================
 
@@ -79,33 +78,40 @@ for so_id, so_name, invoice_ids, cancel_date in needs_fix:
     total_amount += sum(invoices.mapped('amount_total'))
 print('Total amount to be reversed:', total_amount)
 
-# ---- 6. Execute (only when DRY_RUN = False) ----
-if DRY_RUN:
-    print()
-    print('DRY RUN — nothing written. Review above, set DRY_RUN = False, re-run.')
-    for r in needs_fix:
-        print('   WOULD CREATE', r)
-else:
-    results = []
-    for so_id, so_name, invoice_ids, cancel_date in needs_fix:
-        try:
-            invoices = env['account.move'].browse(invoice_ids)
-            reversal = env['account.move.reversal'].with_context(
-                active_model='account.move', active_ids=invoices.ids
-            ).create({
-                'reason': REASON_TAG,
-                'journal_id': invoices[0].journal_id.id,
-                'date': cancel_date,
-            })
-            reversal.reverse_moves()
-            new_moves = getattr(reversal, 'new_move_ids', env['account.move'])
-            results.append((so_name, 'CREATED', cancel_date,
-                            new_moves.mapped('name'), new_moves.mapped('state')))
-            env.cr.commit()
-        except Exception as e:
-            env.cr.rollback()
-            results.append((so_name, 'FAILED: ' + str(e), cancel_date, [], []))
+# ---- 6. CREATE THE CREDIT NOTES ----
+print()
+print('Creating credit notes...')
+results = []
+for so_id, so_name, invoice_ids, cancel_date in needs_fix:
+    try:
+        invoices = env['account.move'].browse(invoice_ids)
+        reversal = env['account.move.reversal'].with_context(
+            active_model='account.move', active_ids=invoices.ids
+        ).create({
+            'reason': REASON_TAG,
+            'journal_id': invoices[0].journal_id.id,
+            'date': cancel_date,
+        })
+        reversal.reverse_moves()
+        new_moves = getattr(reversal, 'new_move_ids', env['account.move'])
+        results.append((so_name, 'CREATED', cancel_date,
+                        new_moves.mapped('name'), new_moves.mapped('state')))
+        env.cr.commit()
+    except Exception as e:
+        env.cr.rollback()
+        results.append((so_name, 'FAILED: ' + str(e), cancel_date, [], []))
 
-    print('Done. Results:')
-    for r in results:
+created = [r for r in results if r[1] == 'CREATED']
+failed  = [r for r in results if r[1].startswith('FAILED')]
+
+print()
+print('Done. Created: %d | Failed: %d' % (len(created), len(failed)))
+print()
+print('--- CREATED ---')
+for r in created:
+    print(r)
+if failed:
+    print()
+    print('--- FAILED ---')
+    for r in failed:
         print(r)
