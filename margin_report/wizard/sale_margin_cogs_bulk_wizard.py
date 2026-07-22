@@ -120,7 +120,7 @@ class SaleMarginCogsBulkWizard(models.TransientModel):
         cos_by_sku = dict(rows)
 
         for sku, cos_value in cos_by_sku.items():
-            product = self.env['product.product'].search([('default_code', '=', sku)], limit=1)
+            product = self.env['product.product'].with_context(active_test=False).search([('default_code', '=', sku)], limit=1)
             if not product:
                 not_found_skus.append(sku)
                 continue
@@ -132,7 +132,7 @@ class SaleMarginCogsBulkWizard(models.TransientModel):
             if self.only_missing:
                 domain += ['|', ('cogs_unit_price', '=', 0), ('cogs_unit_price', '=', False)]
 
-            lines = self.env['sale.order.line'].sudo().search(domain)
+            lines = self.env['sale.order.line'].with_context(active_test=False).sudo().search(domain)
             if not lines:
                 zero_match_skus.append(sku)
                 continue
