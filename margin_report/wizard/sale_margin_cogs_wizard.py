@@ -13,6 +13,7 @@ class SaleMarginCogsWizard(models.TransientModel):
     product_id = fields.Many2one(
         'product.product',
         string='Product',
+        context={'active_test': False},
         help="Leave empty to apply the COS value to ALL products in the "
              "selected date range. Set this to only fix one specific product."
     )
@@ -60,7 +61,7 @@ class SaleMarginCogsWizard(models.TransientModel):
         if self.only_missing:
             domain += ['|', ('cogs_unit_price', '=', 0), ('cogs_unit_price', '=', False)]
 
-        return self.env['sale.order.line'].sudo().search(domain)
+        return self.env['sale.order.line'].with_context(active_test=False).sudo().search(domain)
 
     def action_apply_cogs(self):
         self.ensure_one()
