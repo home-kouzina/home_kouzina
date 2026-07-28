@@ -102,14 +102,17 @@ class SaleMarginReport(models.Model):
                     -- MRP fetched from the sale order line's own Unit Price (sol.price_unit),
                     -- multiplied by qty so it's a line amount like cogs/nett
                     sol.price_unit * sol.product_uom_qty AS mrp,
-                    -- MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
-                    ((pt.list_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
+                    -- MR-change 11: discount = MRP - Nett(Untaxed), using the same MRP basis as the
+                    -- 'mrp' column above (sol.price_unit x qty) instead of the old pt.list_price x qty -
+                    -- keeps Discount consistent with what's actually shown in the MRP column
+                    ((sol.price_unit * sol.product_uom_qty) - sol.price_subtotal) AS discount,
                     -- MR-change 1: discount percentage = Discount / Nett(Untaxed)
                     -- MR-change 6: stored as a fraction (no x100) - the view's 'percentage' widget
                     -- multiplies by 100 and appends '%' for display
+                    -- MR-change 11: same MRP-basis fix as discount above
                     CASE
                         WHEN sol.price_subtotal <> 0.0
-                        THEN ((pt.list_price * sol.product_uom_qty) - sol.price_subtotal)
+                        THEN ((sol.price_unit * sol.product_uom_qty) - sol.price_subtotal)
                             / sol.price_subtotal
                         ELSE 0.0
                     END AS discount_percent,
