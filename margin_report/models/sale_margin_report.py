@@ -45,18 +45,25 @@ class SaleMarginReport(models.Model):
     # sign. The negative-value question (why some lines go negative) is still deferred - unchanged here.
     # MR-change 8: rounded to a whole number (0 decimals) instead of 2, same as cogs_percent/gross_margin
     # MR-change 9: PercentageFloat so Export shows the same number as the UI (37, not 0.37)
-    discount_percent = PercentageFloat(string='Discount %', readonly=True, digits=(16, 0), aggregator=False)
+    # MR-change 10: aggregator must be truthy (not False) or the web client's grouped list view
+    # never even asks the server for this field when a group is collapsed, leaving it blank.
+    # 'avg' here is a placeholder the client needs to see - the actual value is overwritten by
+    # read_group() below with the correct (total Discount / total Nett) computation regardless
+    # of what aggregator ORM would have used.
+    discount_percent = PercentageFloat(string='Discount %', readonly=True, digits=(16, 0), aggregator='avg')
     # MR-change 2: disable default 'sum' aggregation on this ratio field - grouped values are
     # recomputed in read_group() below as (total COGS / total Nett) * 100, not summed per-line percentages
     # MR-change 4: stored as a fraction (0-1, not 0-100) so the 'percentage' widget can display the
     # '%' sign; the widget multiplies by 100 and rounds using 'digits' for display
     # MR-change 9: PercentageFloat so Export shows the same number as the UI (37, not 0.37)
-    cogs_percent = PercentageFloat(string='COGS %', readonly=True, digits=(16, 0), aggregator=False)
+    # MR-change 10: aggregator must be truthy or collapsed group headers stay blank - see discount_percent
+    cogs_percent = PercentageFloat(string='COGS %', readonly=True, digits=(16, 0), aggregator='avg')
     # MR-change 5: same fix as cogs_percent - aggregator=False (recomputed in read_group() below)
     # and stored as a fraction so the 'percentage' widget can display the '%' sign
     # MR-change 7: rounded to a whole number (0 decimals) instead of 2, same as cogs_percent
     # MR-change 9: PercentageFloat so Export shows the same number as the UI (63, not 0.63)
-    gross_margin = PercentageFloat(string='Gross Margin %', readonly=True, digits=(16, 0), aggregator=False)
+    # MR-change 10: aggregator must be truthy or collapsed group headers stay blank - see discount_percent
+    gross_margin = PercentageFloat(string='Gross Margin %', readonly=True, digits=(16, 0), aggregator='avg')
     total_amount_taxed = fields.Float(string='Total Amount (Taxed)', readonly=True, digits='Product Price')
     order_date = fields.Datetime(string='Order Date', readonly=True)
 
