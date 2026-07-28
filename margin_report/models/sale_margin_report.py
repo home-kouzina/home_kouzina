@@ -92,16 +92,9 @@ class SaleMarginReport(models.Model):
                     sol.product_uom_qty AS product_uom_qty,
                     COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty AS cogs,
                     sol.price_subtotal AS nett,
-                    -- MRP fetched from product.product (variant) sales price, not the
-                    -- product.template base price: pt.list_price + sum of this variant's
-                    -- attribute value price_extra, i.e. the same value as pp.lst_price
-                    pt.list_price + COALESCE((
-                        SELECT SUM(ptav.price_extra)
-                        FROM product_variant_combination pvc
-                        JOIN product_template_attribute_value ptav
-                            ON ptav.id = pvc.product_template_attribute_value_id
-                        WHERE pvc.product_product_id = pp.id
-                    ), 0.0) AS mrp,
+                    -- MRP fetched from the sale order line's own Unit Price (sol.price_unit),
+                    -- multiplied by qty so it's a line amount like cogs/nett
+                    sol.price_unit * sol.product_uom_qty AS mrp,
                     -- MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
                     ((pt.list_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
                     -- MR-change 1: discount percentage = Discount / Nett(Untaxed)
