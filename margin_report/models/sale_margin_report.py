@@ -1,6 +1,19 @@
 from odoo import fields, models, tools
 
 
+# MR-change 9: the 'percentage' widget's x100 + '%' is a display-only trick done by the web
+# client - Export (XLSX/CSV) reads the raw stored value and ignores the widget entirely, so
+# without this override cogs_percent/gross_margin/discount_percent would export as 0.37 instead
+# of the 37 the UI shows. This subclass makes Export match what's on screen (still a plain
+# number, e.g. 37 - Excel/CSV cells can't carry a '%' glyph on a usable numeric value).
+class PercentageFloat(fields.Float):
+    def convert_to_export(self, value, record):
+        if not value and value != 0.0:
+            return ''
+        digits = self.get_digits(record.env)
+        return round(value * 100, digits[1] if digits else 2)
+
+
 class SaleMarginReport(models.Model):
     _name = 'sale.margin.report'
     _description = 'Sales Margin Report'
@@ -24,8 +37,26 @@ class SaleMarginReport(models.Model):
     cogs = fields.Float(string='COGS', readonly=True, digits='Product Price')
     nett = fields.Float(string='Nett(Untaxed)', readonly=True, digits='Product Price')
     mrp = fields.Float(string='MRP', readonly=True, digits='Product Price')
-    cogs_percent = fields.Float(string='COGS %', readonly=True, digits=(16, 2))
-    gross_margin = fields.Float(string='Gross Margin %', readonly=True, digits=(16, 2))
+    # MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
+    discount = fields.Float(string='Discount', readonly=True, digits='Product Price')
+    # MR-change 1: discount percentage = Discount / Nett(Untaxed)
+    # MR-change 6: same fix as cogs_percent/gross_margin - aggregator=False (recomputed in
+    # read_group() below) and stored as a fraction so the 'percentage' widget can display the '%'
+    # sign. The negative-value question (why some lines go negative) is still deferred - unchanged here.
+    # MR-change 8: rounded to a whole number (0 decimals) instead of 2, same as cogs_percent/gross_margin
+    # MR-change 9: PercentageFloat so Export shows the same number as the UI (37, not 0.37)
+    discount_percent = PercentageFloat(string='Discount %', readonly=True, digits=(16, 0), aggregator=False)
+    # MR-change 2: disable default 'sum' aggregation on this ratio field - grouped values are
+    # recomputed in read_group() below as (total COGS / total Nett) * 100, not summed per-line percentages
+    # MR-change 4: stored as a fraction (0-1, not 0-100) so the 'percentage' widget can display the
+    # '%' sign; the widget multiplies by 100 and rounds using 'digits' for display
+    # MR-change 9: PercentageFloat so Export shows the same number as the UI (37, not 0.37)
+    cogs_percent = PercentageFloat(string='COGS %', readonly=True, digits=(16, 0), aggregator=False)
+    # MR-change 5: same fix as cogs_percent - aggregator=False (recomputed in read_group() below)
+    # and stored as a fraction so the 'percentage' widget can display the '%' sign
+    # MR-change 7: rounded to a whole number (0 decimals) instead of 2, same as cogs_percent
+    # MR-change 9: PercentageFloat so Export shows the same number as the UI (63, not 0.63)
+    gross_margin = PercentageFloat(string='Gross Margin %', readonly=True, digits=(16, 0), aggregator=False)
     total_amount_taxed = fields.Float(string='Total Amount (Taxed)', readonly=True, digits='Product Price')
     order_date = fields.Datetime(string='Order Date', readonly=True)
 
@@ -62,19 +93,32 @@ class SaleMarginReport(models.Model):
                     COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty AS cogs,
                     sol.price_subtotal AS nett,
                     pt.list_price AS mrp,
+                    -- MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
+                    ((pt.list_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
+                    -- MR-change 1: discount percentage = Discount / Nett(Untaxed)
+                    -- MR-change 6: stored as a fraction (no x100) - the view's 'percentage' widget
+                    -- multiplies by 100 and appends '%' for display
                     CASE
                         WHEN sol.price_subtotal <> 0.0
-                        THEN ROUND(
-                            ((COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty)
-                            / sol.price_subtotal * 100.0)::numeric, 2)
+                        THEN ((pt.list_price * sol.product_uom_qty) - sol.price_subtotal)
+                            / sol.price_subtotal
+                        ELSE 0.0
+                    END AS discount_percent,
+                    -- MR-change 4: stored as a fraction (no x100) - the view's 'percentage' widget
+                    -- multiplies by 100 and appends '%' for display
+                    CASE
+                        WHEN sol.price_subtotal <> 0.0
+                        THEN (COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty)
+                            / sol.price_subtotal
                         ELSE 0.0
                     END AS cogs_percent,
+                    -- MR-change 5: stored as a fraction (no x100) - the view's 'percentage' widget
+                    -- multiplies by 100 and appends '%' for display
                     CASE
                         WHEN sol.price_subtotal <> 0.0
-                        THEN ROUND(
-                            ((sol.price_subtotal - (
+                        THEN (sol.price_subtotal - (
                                 COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty))
-                            / sol.price_subtotal * 100.0)::numeric, 2)
+                            / sol.price_subtotal
                         ELSE 0.0
                     END AS gross_margin,
                     sol.price_total AS total_amount_taxed,
@@ -87,3 +131,41 @@ class SaleMarginReport(models.Model):
                 WHERE sol.display_type IS NULL
             )
         """)
+
+    # MR-change 2: recompute COGS % as (total COGS / total Nett) on each group, instead of
+    # letting the ORM sum the per-line cogs_percent values (which produced meaningless totals like
+    # 1,445.16% when grouped by month).
+    # MR-change 5: same fix applied to gross_margin = (total Nett - total COGS) / total Nett.
+    # MR-change 6: same fix applied to discount_percent = total Discount / total Nett.
+    def read_group(self, domain, fields, groupby, offset=0, limit=None, orderby=False, lazy=True):
+        requested_names = {f.split(':')[0] for f in fields}
+        needs_cogs_percent = 'cogs_percent' in requested_names
+        needs_gross_margin = 'gross_margin' in requested_names
+        needs_discount_percent = 'discount_percent' in requested_names
+        fields = list(fields)
+        extra_fields = []
+        if needs_cogs_percent or needs_gross_margin or needs_discount_percent:
+            for needed in ('cogs', 'nett', 'discount'):
+                if needed not in requested_names:
+                    fields.append(needed)
+                    extra_fields.append(needed)
+
+        result = super().read_group(domain, fields, groupby, offset=offset, limit=limit, orderby=orderby, lazy=lazy)
+
+        if needs_cogs_percent or needs_gross_margin or needs_discount_percent:
+            for group in result:
+                cogs = group.get('cogs') or 0.0
+                nett = group.get('nett') or 0.0
+                discount = group.get('discount') or 0.0
+                # MR-change 4 / MR-change 5 / MR-change 6: stored as a fraction (no x100), matches
+                # the 'percentage' widget's expectation
+                if needs_cogs_percent:
+                    group['cogs_percent'] = cogs / nett if nett else 0.0
+                if needs_gross_margin:
+                    group['gross_margin'] = (nett - cogs) / nett if nett else 0.0
+                if needs_discount_percent:
+                    group['discount_percent'] = discount / nett if nett else 0.0
+                for extra in extra_fields:
+                    group.pop(extra, None)
+
+        return result

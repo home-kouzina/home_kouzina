@@ -72,8 +72,14 @@
                 <field name="cogs" string="COGS" widget="monetary"/>
                 <field name="nett" string="Nett(Untaxed)" widget="monetary"/>
                 <field name="mrp" string="MRP" widget="monetary"/>
-                <field name="cogs_percent" string="COGS %"/>
-                <field name="gross_margin" string="Gross Margin %"/>
+                <!-- MR-change 4: percentage widget shows the '%' sign -->
+                <field name="cogs_percent" string="COGS %" widget="percentage"/>
+                <!-- MR-change 5: percentage widget shows the '%' sign -->
+                <field name="gross_margin" string="Gross Margin %" widget="percentage"/>
+                <!-- MR-change 7: Discount / Discount % moved to after Gross Margin % -->
+                <field name="discount" string="Discount" widget="monetary"/>
+                <!-- MR-change 6: percentage widget shows the '%' sign -->
+                <field name="discount_percent" string="Discount %" widget="percentage"/>
                 <field name="total_amount_taxed" string="Total Amount (Taxed)" widget="monetary"/>
             </list>
         </field>
