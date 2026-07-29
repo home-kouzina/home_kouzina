@@ -61,17 +61,19 @@
             <list string="Sales Margin Report" create="false" edit="false" delete="false">
                 <field name="so_name" string="Sales Order Number"/>
                 <field name="customer_name" string="Customer Name"/>
-                <field name="city" string="City"/>
+                <field name="city" string="City" optional="hide"/>
                 <field name="marketplace_type" string="Marketplace" optional="show"/>
-                <field name="invoice_number" string="Invoice Number"/>
+                <field name="invoice_number" string="Invoice Number" optional="hide"/>
                 <field name="product_name" string="Product Name"/>
-                <field name="ean_number" string="EAN Number"/>
-                <field name="sku" string="SKU"/>
+                <field name="ean_number" string="EAN Number" optional="hide"/>
+                <field name="sku" string="SKU" optional="hide"/>
                 <field name="is_retail" string="Is Retail"/>
                 <field name="product_uom_qty" string="Qty"/>
                 <field name="cogs" string="COGS" widget="monetary"/>
-                <field name="nett" string="Nett(Untaxed)" widget="monetary"/>
-                <field name="mrp" string="MRP" widget="monetary"/>
+                <field name="nett" string="Gross Sale" widget="monetary"/>
+                <field name="mrp" string="Product Sale" widget="monetary"/>
+                <field name="gross_acv" string="Gross ACV" widget="monetary"/>
+                <field name="product_acv" string="Product ACV" widget="monetary"/>
                 <!-- MR-change 4: percentage widget shows the '%' sign -->
                 <field name="cogs_percent" string="COGS %" widget="percentage"/>
                 <!-- MR-change 5: percentage widget shows the '%' sign -->
@@ -80,7 +82,6 @@
                 <field name="discount" string="Discount" widget="monetary"/>
                 <!-- MR-change 6: percentage widget shows the '%' sign -->
                 <field name="discount_percent" string="Discount %" widget="percentage"/>
-                <field name="total_amount_taxed" string="Total Amount (Taxed)" widget="monetary"/>
             </list>
         </field>
     </record>

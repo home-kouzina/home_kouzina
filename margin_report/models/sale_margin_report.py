@@ -35,8 +35,8 @@ class SaleMarginReport(models.Model):
     is_retail = fields.Boolean(string='Is Retail', readonly=True)
     product_uom_qty = fields.Float(string='Qty', readonly=True)
     cogs = fields.Float(string='COGS', readonly=True, digits='Product Price')
-    nett = fields.Float(string='Nett(Untaxed)', readonly=True, digits='Product Price')
-    mrp = fields.Float(string='MRP', readonly=True, digits='Product Price')
+    nett = fields.Float(string='Gross Sale', readonly=True, digits='Product Price')
+    mrp = fields.Float(string='Product Sale', readonly=True, digits='Product Price')
     # MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
     discount = fields.Float(string='Discount', readonly=True, digits='Product Price')
     # MR-change 1: discount percentage = Discount / Nett(Untaxed)
@@ -64,6 +64,12 @@ class SaleMarginReport(models.Model):
     # MR-change 9: PercentageFloat so Export shows the same number as the UI (63, not 0.63)
     # MR-change 10: aggregator must be truthy or collapsed group headers stay blank - see discount_percent
     gross_margin = PercentageFloat(string='Gross Margin %', readonly=True, digits=(16, 0), aggregator='avg')
+    # Gross ACV = Gross Sale / Qty. aggregator truthy (see MR-change 10 note above) so grouped
+    # rows aren't left blank; the real group value is recomputed in read_group() below as
+    # (total Gross Sale / total Qty), not a sum of per-line averages.
+    gross_acv = fields.Float(string='Gross ACV', readonly=True, digits='Product Price', aggregator='avg')
+    # Product ACV = Product Sale / Qty. Same aggregator/read_group treatment as gross_acv above.
+    product_acv = fields.Float(string='Product ACV', readonly=True, digits='Product Price', aggregator='avg')
     total_amount_taxed = fields.Float(string='Total Amount (Taxed)', readonly=True, digits='Product Price')
     order_date = fields.Datetime(string='Order Date', readonly=True)
 
@@ -133,6 +139,13 @@ class SaleMarginReport(models.Model):
                             / sol.price_subtotal
                         ELSE 0.0
                     END AS gross_margin,
+                    CASE
+                        WHEN sol.product_uom_qty <> 0.0
+                        THEN sol.price_subtotal / sol.product_uom_qty
+                        ELSE 0.0
+                    END AS gross_acv,
+                    -- Product ACV = Product Sale / Qty = (price_unit x qty) / qty = price_unit
+                    sol.price_unit AS product_acv,
                     sol.price_total AS total_amount_taxed,
                     so.date_order AS order_date
                 FROM sale_order_line sol
@@ -154,6 +167,8 @@ class SaleMarginReport(models.Model):
         needs_cogs_percent = 'cogs_percent' in requested_names
         needs_gross_margin = 'gross_margin' in requested_names
         needs_discount_percent = 'discount_percent' in requested_names
+        needs_gross_acv = 'gross_acv' in requested_names
+        needs_product_acv = 'product_acv' in requested_names
         fields = list(fields)
         extra_fields = []
         if needs_cogs_percent or needs_gross_margin or needs_discount_percent:
@@ -161,14 +176,21 @@ class SaleMarginReport(models.Model):
                 if needed not in requested_names:
                     fields.append(needed)
                     extra_fields.append(needed)
+        if needs_gross_acv or needs_product_acv:
+            for needed in ('nett', 'mrp', 'product_uom_qty'):
+                if needed not in requested_names and needed not in extra_fields:
+                    fields.append(needed)
+                    extra_fields.append(needed)
 
         result = super().read_group(domain, fields, groupby, offset=offset, limit=limit, orderby=orderby, lazy=lazy)
 
-        if needs_cogs_percent or needs_gross_margin or needs_discount_percent:
+        if needs_cogs_percent or needs_gross_margin or needs_discount_percent or needs_gross_acv or needs_product_acv:
             for group in result:
                 cogs = group.get('cogs') or 0.0
                 nett = group.get('nett') or 0.0
+                mrp = group.get('mrp') or 0.0
                 discount = group.get('discount') or 0.0
+                qty = group.get('product_uom_qty') or 0.0
                 # MR-change 4 / MR-change 5 / MR-change 6: stored as a fraction (no x100), matches
                 # the 'percentage' widget's expectation
                 if needs_cogs_percent:
@@ -177,6 +199,10 @@ class SaleMarginReport(models.Model):
                     group['gross_margin'] = (nett - cogs) / nett if nett else 0.0
                 if needs_discount_percent:
                     group['discount_percent'] = discount / nett if nett else 0.0
+                if needs_gross_acv:
+                    group['gross_acv'] = nett / qty if qty else 0.0
+                if needs_product_acv:
+                    group['product_acv'] = mrp / qty if qty else 0.0
                 for extra in extra_fields:
                     group.pop(extra, None)
 
