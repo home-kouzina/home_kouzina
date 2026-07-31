@@ -13,13 +13,6 @@
                         class="btn-secondary"
                         invisible="not show_fetch_component_lots"/>
             </xpath>
-            <xpath expr="//field[@name='move_raw_ids']//list/field[@name='location_id']" position="before">
-                <field name="component_available_location_ids" column_invisible="True"/>
-            </xpath>
-            <xpath expr="//field[@name='move_raw_ids']//list/field[@name='location_id']" position="attributes">
-                <attribute name="readonly">0</attribute>
-                <attribute name="domain">[('id', 'in', component_available_location_ids)]</attribute>
-            </xpath>
         </field>
     </record>
 </odoo>
