@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_fetch_component_lots" model="ir.ui.view">
+        <field name="name">mrp.production.form.fetch.component.lots</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <field name="show_fetch_component_lots" invisible="1"/>
+                <button name="action_fetch_component_lots"
+                        type="object"
+                        string="Assign Component Lots"
+                        class="btn-secondary"
+                        invisible="not show_fetch_component_lots"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
