@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="mrp_production_form_view_retail_skip_approval" model="ir.ui.view">
+        <field name="name">mrp.production.form.retail.skip.approval</field>
+        <field name="model">mrp.production</field>
+        <field name="inherit_id" ref="mrp.mrp_production_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//form/header" position="inside">
+                <field name="is_retail_product" invisible="1"/>
+            </xpath>
+            <xpath expr="//button[@name='action_approved_submit']" position="attributes">
+                <attribute name="invisible">state != 'draft' or approval_status not in (False, 'draft') or is_retail_product</attribute>
+            </xpath>
+            <xpath expr="//button[@name='action_approved']" position="attributes">
+                <attribute name="invisible">not is_manufacture_approver or approval_status != 'pending' or is_retail_product</attribute>
+            </xpath>
+            <xpath expr="//field[@name='mo_status_bar']" position="attributes">
+                <attribute name="invisible">is_retail_product</attribute>
+            </xpath>
+            <xpath expr="//field[@name='mo_status_bar']" position="after">
+                <field name="mo_status_bar"
+                       widget="statusbar"
+                       statusbar_visible="draft,confirmed,done"
+                       invisible="not is_retail_product"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>
