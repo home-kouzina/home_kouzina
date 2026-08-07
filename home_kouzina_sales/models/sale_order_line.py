@@ -13,7 +13,6 @@ class SaleOrderLine(models.Model):
     )
     cogs_unit_price = fields.Float(
         string='COGS Unit Price',
-        compute='_compute_cogs_unit_price',
         store=True,
         readonly=True,
         copy=False,
@@ -61,3 +60,19 @@ class SaleOrderLine(models.Model):
         total_cost += _template_cost(self.product_id.labelled_product)
         total_cost += _template_cost(self.product_id.packaging_product)
         return total_cost
+
+    cog_price = fields.Float(
+        "COG Price",
+        related='product_id.cog_before_sale',
+        store=True,
+    )
+
+    def _register_hook(self):
+        super()._register_hook()
+        self.env.cr.execute("""
+            UPDATE sale_order_line sol
+            SET cog_price = pp.cog_before_sale
+            FROM product_product pp
+            WHERE pp.id = sol.product_id
+              AND sol.cog_price IS DISTINCT FROM pp.cog_before_sale
+        """)

@@ -103,7 +103,7 @@ class SaleMarginReport(models.Model):
                     pp.is_finished_good AS is_finished_good,
                     pt.is_retail AS is_retail,
                     sol.product_uom_qty AS product_uom_qty,
-                    COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty AS cogs,
+                    COALESCE(sol.cog_price, 0.0) * sol.product_uom_qty AS cogs,
                     sol.price_subtotal AS nett,
                     -- MRP fetched from the product variant's Sales Price (pv.variant_sale_price,
                     -- equivalent to product.product's lst_price), multiplied by qty so it's a
@@ -127,7 +127,7 @@ class SaleMarginReport(models.Model):
                     -- multiplies by 100 and appends '%' for display
                     CASE
                         WHEN sol.price_subtotal <> 0.0
-                        THEN (COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty)
+                        THEN (COALESCE(sol.cog_price, 0.0) * sol.product_uom_qty)
                             / sol.price_subtotal
                         ELSE 0.0
                     END AS cogs_percent,
@@ -136,7 +136,7 @@ class SaleMarginReport(models.Model):
                     CASE
                         WHEN sol.price_subtotal <> 0.0
                         THEN (sol.price_subtotal - (
-                                COALESCE(sol.cogs_unit_price, 0.0) * sol.product_uom_qty))
+                                COALESCE(sol.cog_price, 0.0) * sol.product_uom_qty))
                             / sol.price_subtotal
                         ELSE 0.0
                     END AS gross_margin,
