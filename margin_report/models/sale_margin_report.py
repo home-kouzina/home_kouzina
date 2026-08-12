@@ -39,7 +39,7 @@ class SaleMarginReport(models.Model):
     mrp = fields.Float(string='Product Sale', readonly=True, digits='Product Price')
     # MR-change 1: discount = (MRP x Qty) - Nett(Untaxed)
     discount = fields.Float(string='Discount', readonly=True, digits='Product Price')
-    # MR-change 1: discount percentage = Discount / Nett(Untaxed)
+    # MR-change 1: discount percentage = Discount / Product Sale (MRP x Qty)
     # MR-change 6: same fix as cogs_percent/gross_margin - aggregator=False (recomputed in
     # read_group() below) and stored as a fraction so the 'percentage' widget can display the '%'
     # sign. The negative-value question (why some lines go negative) is still deferred - unchanged here.
@@ -113,14 +113,14 @@ class SaleMarginReport(models.Model):
                     -- 'mrp' column above (variant Sales Price x qty) instead of sol.price_unit -
                     -- keeps Discount consistent with what's actually shown in the MRP column
                     ((pv.variant_sale_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
-                    -- MR-change 1: discount percentage = Discount / Nett(Untaxed)
+                    -- MR-change 1: discount percentage = Discount / Product Sale (MRP x Qty)
                     -- MR-change 6: stored as a fraction (no x100) - the view's 'percentage' widget
                     -- multiplies by 100 and appends '%' for display
                     -- MR-change 11: same MRP-basis fix as discount above
                     CASE
-                        WHEN sol.price_subtotal <> 0.0
+                        WHEN (pv.variant_sale_price * sol.product_uom_qty) <> 0.0
                         THEN ((pv.variant_sale_price * sol.product_uom_qty) - sol.price_subtotal)
-                            / sol.price_subtotal
+                            / (pv.variant_sale_price * sol.product_uom_qty)
                         ELSE 0.0
                     END AS discount_percent,
                     -- MR-change 4: stored as a fraction (no x100) - the view's 'percentage' widget
@@ -186,10 +186,10 @@ class SaleMarginReport(models.Model):
         extra_fields = []
         if needs_cogs_percent or needs_gross_margin or needs_discount_percent:
             for needed in ('cogs', 'nett', 'discount'):
-                if needed not in requested_names:
+                if needed not in requested_names and needed not in extra_fields:
                     fields.append(needed)
                     extra_fields.append(needed)
-        if needs_gross_acv or needs_product_acv:
+        if needs_discount_percent or needs_gross_acv or needs_product_acv:
             for needed in ('nett', 'mrp', 'product_uom_qty'):
                 if needed not in requested_names and needed not in extra_fields:
                     fields.append(needed)
@@ -211,7 +211,7 @@ class SaleMarginReport(models.Model):
                 if needs_gross_margin:
                     group['gross_margin'] = (nett - cogs) / nett if nett else 0.0
                 if needs_discount_percent:
-                    group['discount_percent'] = discount / nett if nett else 0.0
+                    group['discount_percent'] = discount / mrp if mrp else 0.0
                 if needs_gross_acv:
                     group['gross_acv'] = nett / qty if qty else 0.0
                 if needs_product_acv:
