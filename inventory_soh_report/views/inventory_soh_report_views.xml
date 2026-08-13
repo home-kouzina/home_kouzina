@@ -50,6 +50,9 @@
                 <separator/>
 
                 <group expand="0" string="Group By">
+                    <filter string="Type of Product"
+                            name="groupby_product_category_type"
+                            context="{'group_by': 'product_category_type'}"/>
                     <filter string="Product Category"
                             name="groupby_categ"
                             context="{'group_by': 'categ_id'}"/>
