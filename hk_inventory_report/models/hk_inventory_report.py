@@ -117,7 +117,12 @@ class HKInventoryReport(models.TransientModel):
             worksheet.write(row_num, col_num, base_name, text_fmt)  # Product Name
             col_num += 1
              # ADDED: Product Type column value based on is_finished field
-            product_type = 'Finished Product' if product.is_finished_good else 'Raw Material'
+            if product.is_finished_good:
+                product_type = 'Finished Product'
+            elif product.product_tmpl_id.is_retail:
+                product_type = 'Retail'
+            else:
+                product_type = 'Raw Material'
             worksheet.write(row_num, col_num, product_type, text_fmt)  # Product Type
             col_num += 1
             worksheet.write(row_num, col_num, sku, text_fmt)  # SKU
@@ -207,7 +212,11 @@ class HKInventoryPDF(models.AbstractModel):
                 'sku': sku,
                 'variant': variant,
                 'regional_language_name': product.regional_language_name or '',
-                'product_type': 'Finished Product' if product.is_finished_good else 'Raw Material',
+                'product_type': (
+                    'Finished Product' if product.is_finished_good
+                    else 'Retail' if product.product_tmpl_id.is_retail
+                    else 'Raw Material'
+                ),
                 'quantities': wh_qty,
                 'total': total_qty,
             })
