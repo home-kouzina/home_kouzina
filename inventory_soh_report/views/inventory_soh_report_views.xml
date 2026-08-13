@@ -25,6 +25,18 @@
 
                 <separator/>
 
+                <filter string="Retail"
+                        name="filter_type_retail"
+                        domain="[('product_category_type', '=', 'Retail')]"/>
+                <filter string="Finished Good"
+                        name="filter_type_finished_good"
+                        domain="[('product_category_type', '=', 'Finished Good')]"/>
+                <filter string="Raw Material"
+                        name="filter_type_raw_material"
+                        domain="[('product_category_type', '=', 'Raw Material')]"/>
+
+                <separator/>
+
                 <filter string="Has Variance"
                         name="filter_has_variance"
                         domain="[('variance', '!=', 0)]"/>
@@ -38,9 +50,6 @@
                 <separator/>
 
                 <group expand="0" string="Group By">
-                    <filter string="Product Type"
-                            name="groupby_product_type"
-                            context="{'group_by': 'product_type'}"/>
                     <filter string="Product Category"
                             name="groupby_categ"
                             context="{'group_by': 'categ_id'}"/>
@@ -74,12 +83,8 @@
                        string="Category"
                        optional="show"/>
 
-                <field name="product_type"
-                       string="Product Type"
-                       optional="show"/>
-
                 <field name="product_category_type"
-                       string="Types of Goods"
+                       string="Type of Product"
                        optional="show"
                        decoration-success="product_category_type == 'Finished Good'"
                        decoration-warning="product_category_type == 'Raw Material'"/>

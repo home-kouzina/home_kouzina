@@ -95,7 +95,8 @@ class InventorySohReport(models.Model):
 
     product_category_type = fields.Char(
         string='Product Category Type', readonly=True,
-        help='Finished Good or Raw Material based on is_finished_good flag.')
+        help='Retail if is_retail flag is set; otherwise Finished Good or '
+             'Raw Material based on is_finished_good flag.')
 
 
 
@@ -238,6 +239,8 @@ class InventorySohReport(models.Model):
                 pt.categ_id,
                 pt.type                                     AS product_type,
                 CASE
+                    WHEN pt.is_retail = TRUE
+                    THEN 'Retail'
                     WHEN pp.is_finished_good = TRUE
                     THEN 'Finished Good'
                     ELSE 'Raw Material'
