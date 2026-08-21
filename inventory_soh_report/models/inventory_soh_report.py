@@ -290,8 +290,7 @@ class InventorySohReport(models.Model):
             LEFT JOIN wastage     wa ON wa.product_id = pp.id
             LEFT JOIN ivr_variance iv ON iv.product_id = pp.id
 
-            WHERE pt.type IN ('product', 'consu', 'storable')
-              AND pp.active = TRUE
+            WHERE pp.active = TRUE
 
             )
         """ % self._table)

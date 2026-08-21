@@ -105,22 +105,22 @@ class SaleMarginReport(models.Model):
                     sol.product_uom_qty AS product_uom_qty,
                     COALESCE(sol.cog_price, 0.0) * sol.product_uom_qty AS cogs,
                     sol.price_subtotal AS nett,
-                    -- MRP fetched from the product variant's Sales Price (pv.variant_sale_price,
-                    -- equivalent to product.product's lst_price), multiplied by qty so it's a
-                    -- line amount like cogs/nett
-                    pv.variant_sale_price * sol.product_uom_qty AS mrp,
+                    -- MRP fetched from the sale order line's Product Sale Price
+                    -- (sol.product_sale_price, related to product_id.lst_price),
+                    -- multiplied by qty so it's a line amount like cogs/nett
+                    sol.product_sale_price * sol.product_uom_qty AS mrp,
                     -- MR-change 11: discount = MRP - Nett(Untaxed), using the same MRP basis as the
                     -- 'mrp' column above (variant Sales Price x qty) instead of sol.price_unit -
                     -- keeps Discount consistent with what's actually shown in the MRP column
-                    ((pv.variant_sale_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
+                    ((sol.product_sale_price * sol.product_uom_qty) - sol.price_subtotal) AS discount,
                     -- MR-change 1: discount percentage = Discount / Product Sale (MRP x Qty)
                     -- MR-change 6: stored as a fraction (no x100) - the view's 'percentage' widget
                     -- multiplies by 100 and appends '%' for display
                     -- MR-change 11: same MRP-basis fix as discount above
                     CASE
-                        WHEN (pv.variant_sale_price * sol.product_uom_qty) <> 0.0
-                        THEN ((pv.variant_sale_price * sol.product_uom_qty) - sol.price_subtotal)
-                            / (pv.variant_sale_price * sol.product_uom_qty)
+                        WHEN (sol.product_sale_price * sol.product_uom_qty) <> 0.0
+                        THEN ((sol.product_sale_price * sol.product_uom_qty) - sol.price_subtotal)
+                            / (sol.product_sale_price * sol.product_uom_qty)
                         ELSE 0.0
                     END AS discount_percent,
                     -- MR-change 4: stored as a fraction (no x100) - the view's 'percentage' widget
@@ -145,9 +145,9 @@ class SaleMarginReport(models.Model):
                         THEN sol.price_subtotal / sol.product_uom_qty
                         ELSE 0.0
                     END AS gross_acv,
-                    -- Product ACV = Product Sale / Qty = (variant Sales Price x qty) / qty
-                    -- = variant Sales Price
-                    pv.variant_sale_price AS product_acv,
+                    -- Product ACV = Product Sale / Qty = (sol.product_sale_price x qty) / qty
+                    -- = sol.product_sale_price
+                    sol.product_sale_price AS product_acv,
                     sol.price_total AS total_amount_taxed,
                     so.date_order AS order_date
                 FROM sale_order_line sol
