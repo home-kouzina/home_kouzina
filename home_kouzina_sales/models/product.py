@@ -22,6 +22,7 @@ class ProductProduct(models.Model):
         string="COG Before Sale",
         compute="_compute_cog_before_sale",
         store=True,
+        readonly=False,
         help="Cost of goods before the product is sold."
     )
 
