@@ -63,9 +63,15 @@ class SaleOrderLine(models.Model):
 
     cog_price = fields.Float(
         "COG Price",
-        related='product_id.cog_before_sale',
+        compute="_compute_cog_price",
         store=True,
+        copy=False,
     )
+
+    @api.depends('product_id')
+    def _compute_cog_price(self):
+        for line in self:
+            line.cog_price = line.product_id.cog_before_sale or 0.0
 
     def _register_hook(self):
         super()._register_hook()
@@ -74,5 +80,5 @@ class SaleOrderLine(models.Model):
             SET cog_price = pp.cog_before_sale
             FROM product_product pp
             WHERE pp.id = sol.product_id
-              AND sol.cog_price IS DISTINCT FROM pp.cog_before_sale
+              AND sol.cog_price IS NULL
         """)
