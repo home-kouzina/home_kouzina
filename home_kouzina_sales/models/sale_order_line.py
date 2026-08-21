@@ -68,6 +68,18 @@ class SaleOrderLine(models.Model):
         copy=False,
     )
 
+    product_sale_price = fields.Float(
+        "Product Sale Price",
+        compute="_compute_product_sale_price",
+        store=True,
+        digits='Product Price',
+    )
+
+    @api.depends('product_id')
+    def _compute_product_sale_price(self):
+        for line in self:
+            line.product_sale_price = line.product_id.lst_price or 0.0
+
     @api.depends('product_id')
     def _compute_cog_price(self):
         for line in self:

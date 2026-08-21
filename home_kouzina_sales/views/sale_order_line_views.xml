@@ -9,6 +9,7 @@
                 <field name="package_ids" widget="many2many_tags"/>
                 <field name="regional_language_name"/>
                 <field name="cog_price"/>
+                <field name="product_sale_price"/>
             </xpath>
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="print_lot_no"/>
