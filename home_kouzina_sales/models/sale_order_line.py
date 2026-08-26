@@ -69,7 +69,7 @@ class SaleOrderLine(models.Model):
     )
 
     product_sale_price = fields.Float(
-        "Product Sale Price",
+        "Product ACV",
         compute="_compute_product_sale_price",
         store=True,
         digits='Product Price',
