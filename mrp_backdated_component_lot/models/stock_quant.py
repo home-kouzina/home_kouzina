@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from odoo import fields, models
+from odoo import api, fields, models
 
 
 class StockQuant(models.Model):
@@ -15,3 +15,7 @@ class StockQuant(models.Model):
             "normal FIFO (oldest incoming date) lot."
         ),
     )
+
+    @api.model
+    def _get_inventory_fields_write(self):
+        return super()._get_inventory_fields_write() + ['use_for_backdated_mo']
