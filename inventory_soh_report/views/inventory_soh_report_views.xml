@@ -101,32 +101,38 @@
                        optional="show"
                        decoration-danger="qty_on_hand &lt;= 0"
                        decoration-success="qty_on_hand &gt; 0"
+                       options="{'digits': [16, 0]}"
                        sum="Total On Hand"/>
 
                 <field name="qty_inward"
                        string="Purchased Qty"
                        optional="show"
+                       options="{'digits': [16, 0]}"
                        sum="Total Purchased"/>
 
                 <field name="qty_consumption"
                        string="Consumption"
                        optional="show"
+                       options="{'digits': [16, 0]}"
                        sum="Total Consumption"/>
 
                 <field name="qty_return"
                        string="Return"
                        optional="show"
+                       options="{'digits': [16, 0]}"
                        sum="Total Returns"/>
 
                 <field name="qty_wastage"
                        string="Wastage"
                        optional="show"
                        decoration-danger="qty_wastage &gt; 0"
+                       options="{'digits': [16, 0]}"
                        sum="Total Wastage"/>
 
                 <field name="ideal_soh"
                        string="Ideal SOH"
                        optional="show"
+                       options="{'digits': [16, 0]}"
                        sum="Total Ideal SOH"/>
 
                 <field name="actual_soh"
@@ -134,6 +140,7 @@
                        optional="show"
                        decoration-danger="actual_soh &lt; 0"
                        decoration-success="actual_soh &gt;= 0"
+                       options="{'digits': [16, 0]}"
                        sum="Total Actual SOH"/>
 
                 <field name="variance"
@@ -141,6 +148,7 @@
                        optional="show"
                        decoration-danger="variance &gt; 0"
                        decoration-muted="variance == 0"
+                       options="{'digits': [16, 0]}"
                        sum="Total Variance"/>
 
                 <field name="variance_value"
@@ -148,6 +156,7 @@
                        optional="show"
                        decoration-danger="variance_value &gt; 0"
                        decoration-muted="variance_value == 0"
+                       options="{'digits': [16, 0]}"
                        sum="Total Value"/>
 
             </list>
