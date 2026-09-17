@@ -64,3 +64,64 @@ numbers here will be accurate.
   `product.standard_price` exactly on every row, and stays identical across
   orders for the same product regardless of quantity (e.g. Bengali Meat
   Masala Retail shows ₹36 whether the order made 100 units or 300).
+
+---
+
+# Three more columns added (2026-09-17, same day)
+
+In plain terms: this report gained two new pieces of information it didn't
+have before, and one existing date got renamed to match a change made
+elsewhere. Nothing already on this report changed behavior.
+
+## 1. Renamed "Scheduled Date" to "Production Date"
+
+**Why:** the Manufacturing Order form itself just had this same date
+renamed to "Production Date" (see `mrp_auto_component_lots`'s own
+CHANGES.md). This report's own "Scheduled Date" column reads that exact
+same underlying field, so it was renamed to match — otherwise the same
+date would confusingly be called two different things depending on
+whether you're looking at the MO itself or this report.
+
+**Impact:** cosmetic only — same field, same data, just a different column
+header and group-by filter label.
+
+## 2. New column: "Requested Date"
+
+**What:** shows exactly when "Submit for Approval" was clicked on that
+MO — pulled straight from the new `requested_date` field added to
+`mrp.production` by `mrp_auto_component_lots`.
+
+**Not to be confused with:** the existing "Requested By" column, which is
+a completely different thing — that's *who created* the MO, this new one
+is *when it was submitted for approval*. Two different pieces of
+information that happen to have similar-sounding names.
+
+**Impact — one real dependency change:** because this report's SQL view
+now reads a column (`requested_date`) that only exists once
+`mrp_auto_component_lots` is installed, `mo_cost_report`'s
+`__manifest__.py` now formally **depends on** `mrp_auto_component_lots`.
+Without adding that dependency, installing this report anywhere that other
+module isn't already present would crash outright when the view tries to
+be created (referencing a column that doesn't exist). This is the one
+change here that isn't purely additive — it changes what this module
+requires to install at all.
+
+## 3. New column: "Type of Product"
+
+**What:** shows whether the MO's product is a **Retail**, **Finished
+Good**, or **Raw Material** item — the exact same classification logic
+already used by the `inventory_soh_report` module, copied over so both
+reports agree with each other on how a product is categorized.
+
+**Impact:** purely additive — a new column, doesn't change any existing
+number or filter.
+
+## Verified
+
+- Ran a live check on the test database: "Type of Product" correctly
+  showed "Finished Good" for FG products and "Retail" for retail products;
+  "Requested Date" correctly showed a real timestamp for MOs that went
+  through Submit for Approval, and blank for older MOs that never did
+  (which is the factually correct answer for those, not a bug).
+- Module upgrade loaded cleanly with the new manifest dependency in place,
+  no errors.

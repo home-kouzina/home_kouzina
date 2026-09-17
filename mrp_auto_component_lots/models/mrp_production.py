@@ -22,6 +22,17 @@ class MrpProduction(models.Model):
         tracking=True,
         copy=False,
     )
+    # New field: records exactly when this MO was submitted for approval.
+    # readonly=True because it should only ever be set by the code below
+    # (action_approved_submit), never typed in manually.
+    requested_date = fields.Datetime(
+        string='Requested Date',
+        readonly=True,
+        copy=False,
+        help="Date and time this Manufacturing Order was submitted for "
+             "approval (Submit for Approval button). Set automatically, "
+             "not editable.",
+    )
     mo_status_bar = fields.Selection(
         selection=[
             ('draft', 'Draft'),
@@ -129,6 +140,11 @@ class MrpProduction(models.Model):
                 raise UserError(_("This Manufacturing Order is already approved."))
 
             production.approval_status = 'pending'
+            # Stamp the moment this button was clicked into requested_date.
+            # The button itself is only visible while approval_status is
+            # False/'draft' (see the view), so in practice this only ever
+            # fires once per MO under the current workflow.
+            production.requested_date = fields.Datetime.now()
             production.message_post(
                 body=_("Manufacturing Order submitted for approval by %s.") % self.env.user.display_name,
             )
