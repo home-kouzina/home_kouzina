@@ -24,7 +24,10 @@ class MoCostReport(models.Model):
     date_start = fields.Datetime(string='Scheduled Date', readonly=True)
     product_qty = fields.Float(string='Quantity', readonly=True)
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', readonly=True)
-    mo_cost = fields.Float(string='Cost', digits='Product Price', readonly=True)
+    mo_cost = fields.Float(
+        string='Cost', digits='Product Price', readonly=True,
+        help="The product variant's own Cost price (General Information tab), "
+             "not multiplied by the quantity produced.")
     currency_id = fields.Many2one('res.currency', string='Currency', readonly=True)
     company_id = fields.Many2one('res.company', string='Company', readonly=True)
     # Requested By = user who created the MO (create_uid)
@@ -53,14 +56,13 @@ class MoCostReport(models.Model):
                     mp.product_uom_id                   AS product_uom_id,
                     COALESCE(pp.default_code, '')       AS sku_code,
                     mp.lot_producing_id                 AS lot_producing_id,
+                    -- Cost = the product variant's own Cost price, shown as-is (not
+                    -- multiplied by quantity), replacing the old inventory-valuation-
+                    -- ledger sum. standard_price is company-specific (stored as JSON
+                    -- keyed by company id), so it's looked up for this order's own
+                    -- company_id.
                     COALESCE(
-                        (
-                            SELECT SUM(svl.value)
-                            FROM stock_valuation_layer svl
-                            JOIN stock_move sm ON sm.id = svl.stock_move_id
-                            WHERE sm.production_id = mp.id
-                              AND sm.state = 'done'
-                        ), 0.0
+                        (pp.standard_price ->> mp.company_id::text)::numeric, 0.0
                     )                                   AS mo_cost,
                     rc.currency_id                      AS currency_id,
                     mp.company_id                       AS company_id,
