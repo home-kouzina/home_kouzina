@@ -8,7 +8,12 @@
     """,
     'author': 'Custom',
     'category': 'Manufacturing',
-    'depends': ['mrp', 'mrp_account', 'visible_group_export'],
+    # mrp_auto_component_lots added: the SQL view now reads
+    # mrp.production.requested_date, a field that module defines. Without
+    # this dependency, installing mo_cost_report somewhere that module isn't
+    # installed would crash the view's CREATE VIEW with a missing-column
+    # error and break the whole module.
+    'depends': ['mrp', 'mrp_account', 'visible_group_export', 'mrp_auto_component_lots'],
     'data': [
         'security/ir.model.access.csv',
         'views/mo_cost_report_views.xml',

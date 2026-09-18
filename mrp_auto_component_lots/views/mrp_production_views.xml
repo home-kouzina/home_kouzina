@@ -35,8 +35,37 @@
                         string="Approve"
                         class="btn-primary"
                         invisible="not is_manufacture_approver or approval_status != 'pending'"
-                        />             
-                    
+                        />
+
+            </xpath>
+
+            <!-- Renamed both date_start labels (the core view shows a different one
+                 depending on state) to "Production Date" so it always reads the
+                 same regardless of the MO's stage, instead of switching between
+                 "Scheduled Date" and "Start Date". Odoo's view inheritance won't
+                 allow selecting by the "string" attribute, so they're targeted by
+                 position instead (1st = "Scheduled Date" label, 2nd = "Start Date"
+                 label, per the core view's order). -->
+            <xpath expr="(//label[@for='date_start'])[1]" position="attributes">
+                <attribute name="string">Production Date</attribute>
+            </xpath>
+            <xpath expr="(//label[@for='date_start'])[2]" position="attributes">
+                <attribute name="string">Production Date</attribute>
+            </xpath>
+
+            <!-- New read-only field showing when this MO was first submitted for
+                 approval (set automatically in action_approved_submit, not
+                 user-editable), placed right after the existing Scheduled End
+                 field so it sits with the other date info. The core view has
+                 TWO field[@name='date_finished'] nodes: an invisible technical
+                 one near the top of the sheet (used for onchange tracking) and
+                 the real, visible "Scheduled End" field further down in the
+                 date group. The first attempt used an unindexed xpath and
+                 silently matched the wrong (invisible) one, so requested_date
+                 never actually appeared on screen even though the field itself
+                 worked correctly. Indexed to [2] to hit the visible one. -->
+            <xpath expr="(//field[@name='date_finished'])[2]" position="after">
+                <field name="requested_date"/>
             </xpath>
         </field>
     </record>

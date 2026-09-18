@@ -14,8 +14,18 @@
                   decoration-muted="state == 'draft'"
                   decoration-danger="state == 'cancel'">
                 <field name="mo_name" string="MO Number"/>
-                <field name="date_start" string="Scheduled Date" optional="show"/>
+                <!-- Renamed from "Scheduled Date" to match the same relabel
+                     done on the Manufacturing Order form itself. -->
+                <field name="date_start" string="Production Date" optional="show"/>
+                <!-- Moved next to Production Date (was near Requested By)
+                     since both are date columns readers naturally compare
+                     side by side. -->
+                <field name="requested_date" string="Requested Date" optional="show"/>
                 <field name="product_id" string="Product"/>
+                <!-- New: Retail / Finished Good / Raw Material, so this report
+                     can be filtered/grouped by product type without opening
+                     each product. -->
+                <field name="product_category_type" string="Type of Product" optional="show"/>
                 <field name="sku_code" string="SKU" optional="show"/>
                 <field name="lot_producing_id" string="Lot/Serial Number" optional="show"/>
                 <field name="product_qty" string="Qty" optional="show"/>
@@ -25,7 +35,7 @@
                     decoration-info="state in ('confirmed', 'progress', 'to_close')"
                     decoration-muted="state == 'cancel'"
                     optional="show"/>
-                
+
                 <field name="requested_by_id" string="Requested By"/>
                 <field name="approved_by_id" string="Approved By"/>
                 <field name="currency_id" column_invisible="1"/>
@@ -70,7 +80,8 @@
                         context="{'group_by': 'approved_by_id'}"/>
                     <filter string="Status" name="group_state"
                         context="{'group_by': 'state'}"/>
-                    <filter string="Scheduled Date" name="group_date"
+                    <!-- Renamed from "Scheduled Date" to match date_start's new label. -->
+                    <filter string="Production Date" name="group_date"
                         context="{'group_by': 'date_start:month'}"/>
                     <filter string="Company" name="group_company"
                         context="{'group_by': 'company_id'}"

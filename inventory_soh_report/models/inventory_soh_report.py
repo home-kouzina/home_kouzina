@@ -11,6 +11,9 @@ class InventorySohReport(models.Model):
         - Renamed qty_inward label to 'Purchased Qty'
         - Added variance_value = variance * cog_before_sale
         - actual_soh moved before variance in view
+        - variance_value now uses the product variant's own Cost price
+          instead of cog_before_sale (which also included labelling/
+          packaging costs, overstating the value of a stock variance)
     """
 
     _name = 'inventory.soh.report'
@@ -88,10 +91,14 @@ class InventorySohReport(models.Model):
         help='Sum of variation_qty from the latest confirmed Inventory Variation '
              'report (IVR) for this product.')
 
+    # Renamed from "Value = Variance x COG Before Sale": COG Before Sale also
+    # adds on labelling/packaging costs, which isn't what "Value" is meant to
+    # represent here — this is the value of missing/extra stock, so it should
+    # only use the product variant's own raw Cost price.
     variance_value = fields.Float(
         string='Value',
         digits='Account', readonly=True,
-        help='Value = Variance × COG Before Sale')
+        help='Value = Variance x the product variant\'s own Cost price.')
 
     product_category_type = fields.Char(
         string='Product Category Type', readonly=True,
@@ -276,9 +283,31 @@ class InventorySohReport(models.Model):
                 -- Variance from latest confirmed IVR
                 COALESCE(iv.variance, 0)                    AS variance,
 
-                -- Value = Variance × COG Before Sale
+                -- Value = Variance x the product variant's own Cost price.
+                -- Was previously Variance x COG Before Sale (cog_before_sale),
+                -- but that field also adds on labelling/packaging costs on
+                -- top of Cost, which overstates the value of a stock
+                -- shortfall/excess — this is meant to price just the raw
+                -- stock itself, so it should read Cost price directly.
+                --
+                -- standard_price (Cost price) is a company-dependent field:
+                -- Postgres stores it as a JSON object keyed by company id
+                -- (e.g. {"1": 2.61}), not a plain column, so it can't be read
+                -- with a simple pp.standard_price. jsonb_each_text unpacks
+                -- that JSON and this pulls out whichever value is set,
+                -- regardless of which company id it happens to be keyed
+                -- under. This report has no per-row company column to look
+                -- up one specific company's cost by (unlike mo_cost_report,
+                -- which keys off the order's own company_id) — if a product
+                -- genuinely had a different Cost price set for more than one
+                -- company, this would arbitrarily use one of them.
                 COALESCE(iv.variance, 0)
-                    * COALESCE(pp.cog_before_sale, 0)       AS variance_value
+                    * COALESCE(
+                        (SELECT value::numeric
+                         FROM jsonb_each_text(pp.standard_price)
+                         LIMIT 1),
+                        0
+                    )                                       AS variance_value
 
             FROM product_product pp
             JOIN product_template pt ON pt.id = pp.product_tmpl_id

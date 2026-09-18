@@ -21,7 +21,9 @@ class MoCostReport(models.Model):
         ('done', 'Done'),
         ('cancel', 'Cancelled'),
     ], string='Status', readonly=True)
-    date_start = fields.Datetime(string='Scheduled Date', readonly=True)
+    # Renamed from "Scheduled Date" so it reads the same as the matching
+    # relabel done on the Manufacturing Order form itself.
+    date_start = fields.Datetime(string='Production Date', readonly=True)
     product_qty = fields.Float(string='Quantity', readonly=True)
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', readonly=True)
     mo_cost = fields.Float(
@@ -38,6 +40,17 @@ class MoCostReport(models.Model):
     sku_code = fields.Char(string='SKU', readonly=True)
     # Lot/Serial Number = lot_producing_id on mrp.production
     lot_producing_id = fields.Many2one('stock.lot', string='Lot/Serial Number', readonly=True)
+    # New: when this MO was submitted for approval (mrp_auto_component_lots'
+    # requested_date, stamped by action_approved_submit). Requires that
+    # module to be installed — see __manifest__.py depends.
+    requested_date = fields.Datetime(string='Requested Date', readonly=True)
+    # New: Retail / Finished Good / Raw Material, same classification logic
+    # as inventory_soh_report, so the two reports agree with each other.
+    product_category_type = fields.Char(
+        string='Type of Product', readonly=True,
+        help="Retail if the product's own 'Is Retail' box is ticked; "
+             "otherwise Finished Good or Raw Material based on its "
+             "'Is Finished Good' box.")
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -56,6 +69,21 @@ class MoCostReport(models.Model):
                     mp.product_uom_id                   AS product_uom_id,
                     COALESCE(pp.default_code, '')       AS sku_code,
                     mp.lot_producing_id                 AS lot_producing_id,
+                    -- requested_date lives on mrp.production, added by the
+                    -- mrp_auto_component_lots module (this module now depends
+                    -- on it, see __manifest__.py, so the column always exists
+                    -- whenever this view is created).
+                    mp.requested_date                   AS requested_date,
+                    -- Same Retail / Finished Good / Raw Material split used by
+                    -- inventory_soh_report, so both reports classify products
+                    -- the same way.
+                    CASE
+                        WHEN pt.is_retail = TRUE
+                        THEN 'Retail'
+                        WHEN pp.is_finished_good = TRUE
+                        THEN 'Finished Good'
+                        ELSE 'Raw Material'
+                    END                                  AS product_category_type,
                     -- Cost = the product variant's own Cost price, shown as-is (not
                     -- multiplied by quantity), replacing the old inventory-valuation-
                     -- ledger sum. standard_price is company-specific (stored as JSON
