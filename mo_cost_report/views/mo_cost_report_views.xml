@@ -15,8 +15,15 @@
                   decoration-danger="state == 'cancel'">
                 <field name="mo_name" string="MO Number"/>
                 <!-- Renamed from "Scheduled Date" to match the same relabel
-                     done on the Manufacturing Order form itself. -->
-                <field name="date_start" string="Production Date" optional="show"/>
+                     done on the Manufacturing Order form itself. Hidden by
+                     default now — the split Date/Time columns below are the
+                     default view; still available via the column picker. -->
+                <field name="date_start" string="Production Date" optional="hide"/>
+                <!-- Date-only / time-only split of Production Date, so an
+                     export can put them in two separate columns instead of
+                     one combined date+time cell. Shown by default. -->
+                <field name="production_date_only" string="Production Date (Date)" optional="show"/>
+                <field name="production_time_only" string="Production Date (Time)" optional="show"/>
                 <!-- Moved next to Production Date (was near Requested By)
                      since both are date columns readers naturally compare
                      side by side. -->

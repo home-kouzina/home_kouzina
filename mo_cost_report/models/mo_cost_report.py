@@ -24,12 +24,22 @@ class MoCostReport(models.Model):
     # Renamed from "Scheduled Date" so it reads the same as the matching
     # relabel done on the Manufacturing Order form itself.
     date_start = fields.Datetime(string='Production Date', readonly=True)
+    # Date-only / time-only split of date_start, so an export can put them
+    # in two separate spreadsheet columns instead of one combined
+    # "2026-09-17 16:36:42" cell. Non-stored computed fields (not part of
+    # the SQL view) — each recomputed from date_start using the same
+    # timezone conversion Odoo already applies when it displays
+    # "Production Date" on screen, so these two match what's shown there.
+    production_date_only = fields.Date(
+        string='Production Date (Date)', compute='_compute_production_date_split')
+    production_time_only = fields.Char(
+        string='Production Date (Time)', compute='_compute_production_date_split')
     product_qty = fields.Float(string='Quantity', readonly=True)
     product_uom_id = fields.Many2one('uom.uom', string='Unit of Measure', readonly=True)
     mo_cost = fields.Float(
         string='Cost', digits='Product Price', readonly=True,
         help="The product variant's own Cost price (General Information tab), "
-             "not multiplied by the quantity produced.")
+             "multiplied by the quantity produced on this order (Qty x Cost).")
     currency_id = fields.Many2one('res.currency', string='Currency', readonly=True)
     company_id = fields.Many2one('res.company', string='Company', readonly=True)
     # Requested By = user who created the MO (create_uid)
@@ -51,6 +61,17 @@ class MoCostReport(models.Model):
         help="Retail if the product's own 'Is Retail' box is ticked; "
              "otherwise Finished Good or Raw Material based on its "
              "'Is Finished Good' box.")
+
+    @api.depends('date_start')
+    def _compute_production_date_split(self):
+        for rec in self:
+            if rec.date_start:
+                local_dt = fields.Datetime.context_timestamp(rec, rec.date_start)
+                rec.production_date_only = local_dt.date()
+                rec.production_time_only = local_dt.strftime('%H:%M:%S')
+            else:
+                rec.production_date_only = False
+                rec.production_time_only = False
 
     def init(self):
         tools.drop_view_if_exists(self.env.cr, self._table)
@@ -84,14 +105,14 @@ class MoCostReport(models.Model):
                         THEN 'Finished Good'
                         ELSE 'Raw Material'
                     END                                  AS product_category_type,
-                    -- Cost = the product variant's own Cost price, shown as-is (not
-                    -- multiplied by quantity), replacing the old inventory-valuation-
-                    -- ledger sum. standard_price is company-specific (stored as JSON
-                    -- keyed by company id), so it's looked up for this order's own
+                    -- Cost = the product variant's own Cost price x the quantity
+                    -- produced on this order (Qty x Cost = order total).
+                    -- standard_price is company-specific (stored as JSON keyed by
+                    -- company id), so it's looked up for this order's own
                     -- company_id.
                     COALESCE(
                         (pp.standard_price ->> mp.company_id::text)::numeric, 0.0
-                    )                                   AS mo_cost,
+                    ) * mp.product_qty                  AS mo_cost,
                     rc.currency_id                      AS currency_id,
                     mp.company_id                       AS company_id,
                     mp.create_uid                       AS requested_by_id,
