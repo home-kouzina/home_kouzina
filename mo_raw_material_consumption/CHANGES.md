@@ -107,3 +107,40 @@ those modules was touched to build this.
   166 grouped rows returned.
 - Confirmed the new action and menu are registered under Manufacturing ▶
   Reporting, pointing at each other correctly.
+
+---
+
+# kg conversion widened to match inventory_soh_report's fix (2026-09-21)
+
+## In plain terms
+
+Rock salt's `Qty Consumed` here was showing raw gram figures (e.g. 356,
+1070, 133400) as if they were plain "Units" — because Rock salt's own
+Unit of Measure field says "Units", even though every real transaction
+for it was actually recorded in grams. `inventory_soh_report` had this
+exact same issue and got fixed first (see its own `CHANGES.md`, same
+date) — this report gets the identical fix, so the two never disagree
+with each other on the same product.
+
+## What changed
+
+`models/mo_raw_material_consumption.py`: added the same `gram_products`
+CTE used in `inventory_soh_report` — detects any product whose real done
+stock moves were recorded in grams, regardless of what its own UoM field
+says — and the `qty_consumed` conversion now applies the 0.001 kg factor
+whenever a product matches either that detection or its own UoM field.
+
+## Impact
+
+92 products (the same set found in `inventory_soh_report`) now show
+correctly scaled kg figures here too. E.g. Rock salt's 16 MO rows, which
+used to add up to 141,746, now add up to 141.746 — matching
+`inventory_soh_report`'s own Consumption figure for Rock salt exactly.
+
+## Verified
+
+- Module upgrade (`-u mo_raw_material_consumption --stop-after-init`)
+  loaded cleanly alongside `inventory_soh_report`'s own fix, 255 modules,
+  no errors.
+- Rock salt: this report's 16 MO rows now sum to 141.746, identical to
+  `inventory_soh_report`'s Consumption figure for the same product.

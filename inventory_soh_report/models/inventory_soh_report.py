@@ -16,7 +16,10 @@ class InventorySohReport(models.Model):
           packaging costs, overstating the value of a stock variance)
         - qty_on_hand/qty_inward/qty_consumption/qty_return/qty_wastage/
           ideal_soh/actual_soh/variance are shown in kg (not grams) for
-          any product whose Unit of Measure is grams
+          any product whose Unit of Measure is grams, OR whose real done
+          stock moves were actually recorded in grams even though its own
+          Unit of Measure field says something else (a data-setup mismatch
+          found on 92 products, e.g. Rock salt)
     """
 
     _name = 'inventory.soh.report'
@@ -247,6 +250,21 @@ class InventorySohReport(models.Model):
                 GROUP BY ivl.product_id
             ),
 
+            -- ─── Products actually transacted in grams, regardless of what
+            --     their own master "Unit of Measure" field says. Several
+            --     products (e.g. Rock salt) have their UoM field set to
+            --     "Units", but every real BOM line and stock move for them
+            --     was entered in grams — a data-setup mismatch, not a report
+            --     bug. This looks at what unit the real, done transactions
+            --     actually used, so those products get the same kg display
+            --     treatment as ones correctly marked "g" on their own record.
+            gram_products AS (
+                SELECT DISTINCT sm.product_id
+                FROM stock_move sm
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                WHERE sm.state = 'done' AND mu.name->>'en_US' = 'g'
+            ),
+
             -- ─── Raw SELECT (everything in the product's own stored UoM) ──────
             raw AS (
                 SELECT
@@ -265,14 +283,21 @@ class InventorySohReport(models.Model):
                     pt.uom_id,
                     COALESCE(pp.default_code, pt.default_code)  AS sku,
 
-                    -- Report-display kg conversion for gram-UoM products:
-                    -- 1 if the product's UoM isn't grams, 0.001 if it is —
-                    -- multiplied onto every quantity column below so a
-                    -- product tracked in grams reads in kg on this report
-                    -- (e.g. 45g shows as 0.045). Purely a display factor;
-                    -- doesn't touch the stored stock/move data anywhere.
-                    CASE WHEN uu.name->>'en_US' = 'g' THEN 0.001 ELSE 1 END
-                                                                AS kg_factor,
+                    -- Report-display kg conversion: 0.001 (grams -> kg) if
+                    -- EITHER the product's own UoM field says "g", OR its
+                    -- real done stock moves were actually recorded in grams
+                    -- (the gram_products CTE above) — otherwise 1 (no
+                    -- conversion). Multiplied onto every quantity column
+                    -- below, including On Hand (from stock.quant, which has
+                    -- no per-row UoM of its own — treated the same way as
+                    -- the rest of that product's data once it's known to be
+                    -- gram-denominated in practice). Purely a display
+                    -- factor; doesn't touch the stored stock/move data.
+                    CASE
+                        WHEN uu.name->>'en_US' = 'g' THEN 0.001
+                        WHEN gp.product_id IS NOT NULL THEN 0.001
+                        ELSE 1
+                    END                                         AS kg_factor,
 
                     COALESCE(oh.qty_on_hand,     0)             AS qty_on_hand,
                     COALESCE(iw.qty_inward,      0)             AS qty_inward,
@@ -334,6 +359,7 @@ class InventorySohReport(models.Model):
                 FROM product_product pp
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
                 LEFT JOIN uom_uom     uu ON uu.id = pt.uom_id
+                LEFT JOIN gram_products gp ON gp.product_id = pp.id
 
                 LEFT JOIN onhand      oh ON oh.product_id = pp.id
                 LEFT JOIN inward      iw ON iw.product_id = pp.id
