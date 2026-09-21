@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- SEARCH VIEW -->
+    <record id="view_mo_raw_material_consumption_search" model="ir.ui.view">
+        <field name="name">mo.raw.material.consumption.search</field>
+        <field name="model">mo.raw.material.consumption</field>
+        <field name="arch" type="xml">
+            <search string="Search MO-wise Raw Material Consumption">
+
+                <field name="product_id" string="Raw Material"
+                       filter_domain="[('product_id.name', 'ilike', self)]"/>
+                <field name="mo_name" string="MO Number"/>
+                <field name="sku" string="SKU"/>
+                <field name="categ_id" string="Category"/>
+
+                <separator/>
+
+                <filter string="This Year"
+                        name="filter_this_year"
+                        domain="[('production_date', '&gt;=', context_today().strftime('%Y-01-01'))]"/>
+                <filter string="Last Year"
+                        name="filter_last_year"
+                        domain="[('production_date', '&gt;=', (context_today() + relativedelta(years=-1)).strftime('%Y-01-01')),
+                                  ('production_date', '&lt;', context_today().strftime('%Y-01-01'))]"/>
+
+                <separator/>
+
+                <group expand="0" string="Group By">
+                    <filter string="Raw Material"
+                            name="groupby_product"
+                            context="{'group_by': 'product_id'}"/>
+                    <filter string="Category"
+                            name="groupby_categ"
+                            context="{'group_by': 'categ_id'}"/>
+                    <filter string="Production Date (Month)"
+                            name="groupby_production_date_month"
+                            context="{'group_by': 'production_date:month'}"/>
+                </group>
+
+            </search>
+        </field>
+    </record>
+
+    <!-- PIVOT VIEW: raw materials as rows, production month as columns -->
+    <record id="view_mo_raw_material_consumption_pivot" model="ir.ui.view">
+        <field name="name">mo.raw.material.consumption.pivot</field>
+        <field name="model">mo.raw.material.consumption</field>
+        <field name="arch" type="xml">
+            <pivot string="MO-wise Raw Material Consumption" disable_linking="True">
+                <field name="product_id" type="row"/>
+                <field name="production_date" interval="month" type="col"/>
+                <field name="qty_consumed" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <!-- LIST VIEW: one row per (raw material, MO) -->
+    <record id="view_mo_raw_material_consumption_list" model="ir.ui.view">
+        <field name="name">mo.raw.material.consumption.list</field>
+        <field name="model">mo.raw.material.consumption</field>
+        <field name="arch" type="xml">
+            <list string="MO-wise Raw Material Consumption"
+                  create="false" edit="false" delete="false"
+                  default_order="production_date desc, mo_name">
+
+                <field name="mo_name" string="MO Number" optional="show"/>
+                <field name="production_date" string="Production Date" optional="show"/>
+                <field name="sku" string="SKU" optional="show"/>
+                <field name="product_id" string="Raw Material" optional="show"/>
+                <field name="categ_id" string="Category" optional="show"/>
+                <field name="uom_id" string="UoM" optional="hide"/>
+                <field name="qty_consumed" string="Qty Consumed"
+                       optional="show" sum="Total Qty Consumed"/>
+
+            </list>
+        </field>
+    </record>
+
+    <!-- ACTION -->
+    <record id="action_mo_raw_material_consumption" model="ir.actions.act_window">
+        <field name="name">MO-wise Raw Material Consumption</field>
+        <field name="res_model">mo.raw.material.consumption</field>
+        <field name="view_mode">pivot,list</field>
+        <field name="search_view_id" ref="view_mo_raw_material_consumption_search"/>
+        <field name="context">{'search_default_filter_this_year': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                No raw material consumption data found.
+            </p>
+            <p>
+                One row per raw material per Manufacturing Order, with the
+                MO's own number and Production Date — group by "Production
+                Date (Month)" to see monthly trends, or open the Pivot view
+                for materials-by-month at a glance.
+            </p>
+        </field>
+    </record>
+
+</odoo>

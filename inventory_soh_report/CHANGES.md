@@ -259,3 +259,61 @@ powder, Dried mint leaves, Yellow chilli, Imli powder) and confirmed for
 each row: `qty_on_hand + qty_inward - qty_consumption - qty_return -
 qty_wastage = ideal_soh` holds exactly in the new kg-scaled numbers, and
 `variance_value` is unchanged from before this entry.
+
+---
+
+# inventory_soh_report — "Outgoing Inventory" search filter added (2026-09-21)
+
+In plain terms: a new filter, "Outgoing Inventory," in the report's
+Filters dropdown — ticking it narrows the list down to only products
+that have actually had stock go out (non-zero Consumption). Nothing else
+about the report changed.
+
+## Why not also a "Group By: Month"
+
+Also asked for at the same time: a "Group By: Month" alongside this
+filter. Not added, and not possible without restructuring this report —
+this model is one row per product (a lifetime snapshot), with no date
+column on any row at all. Odoo can only group by a field that exists;
+there's nothing here to group by month with. Trying to bolt a month
+dimension onto this report is the same wall hit twice already
+this session (once by making a column context-dependent, which broke
+Group By totals with `Cannot convert ... to SQL because it is not
+stored`; once by building it as a genuinely separate report with its own
+per-month rows, which was built, verified working, and then removed at
+the user's own request in favor of Odoo's built-in screens). Given that
+history, only the filter — which fits the existing one-row-per-product
+shape cleanly — was added here.
+
+## What changed
+
+`views/inventory_soh_report_views.xml` — one new `<filter>` in the
+search view, next to the existing "Negative Actual SOH" filter:
+
+```xml
+<filter string="Outgoing Inventory"
+        name="filter_outgoing_inventory"
+        domain="[('qty_consumption', '!=', 0)]"/>
+```
+
+Plain domain filter on the existing `qty_consumption` field — no new
+field, no view/model restructuring, nothing touched outside this one
+line.
+
+## Impact
+
+Ticking "Outgoing Inventory" narrows the report from 767 rows to the 57
+rows that have non-zero Consumption (i.e. actually had stock go out, as
+either a finished-goods delivery or a raw-material MRP consumption).
+Every other filter, column, and the Group By options (Type of Product,
+Product Category) are untouched.
+
+## Verified
+
+Applied with `-u inventory_soh_report`; module reloaded cleanly (254
+modules, no errors — same count as before, since no field/model changed).
+Confirmed in the Odoo shell: the new filter's domain correctly narrows
+767 → 57 rows, the filter is present in the saved view's arch, and the
+"Group By → Type of Product" totals (Finished Good 1.0, Raw Material
+1,357,291.72568, Retail 0.0) are byte-for-byte identical to before this
+change.

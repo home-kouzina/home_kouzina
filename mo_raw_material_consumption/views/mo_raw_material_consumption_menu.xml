@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        Adds "MO-wise Raw Material Consumption" under:
+        Manufacturing  ▸  Reporting  ▸  MO-wise Raw Material Consumption
+
+        Right next to MO Cost Report (mo_cost_report/views/mo_cost_report_menu.xml)
+        — a separate menu item, not a replacement for it or for Inventory
+        SOH Report.
+    -->
+    <menuitem
+        id="menu_mo_raw_material_consumption"
+        name="MO-wise Raw Material Consumption"
+        parent="mrp.menu_mrp_reporting"
+        action="action_mo_raw_material_consumption"
+        sequence="26"
+        groups="mrp.group_mrp_user"/>
+
+</odoo>

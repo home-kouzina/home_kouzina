@@ -46,6 +46,9 @@
                 <filter string="Negative Actual SOH"
                         name="filter_negative_soh"
                         domain="[('actual_soh', '&lt;', 0)]"/>
+                <filter string="Outgoing Inventory"
+                        name="filter_outgoing_inventory"
+                        domain="[('qty_consumption', '!=', 0)]"/>
 
                 <separator/>
 

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_mo_raw_material_consumption_user,mo.raw.material.consumption.user,model_mo_raw_material_consumption,mrp.group_mrp_user,1,0,0,0
+access_mo_raw_material_consumption_manager,mo.raw.material.consumption.manager,model_mo_raw_material_consumption,mrp.group_mrp_manager,1,0,0,0
