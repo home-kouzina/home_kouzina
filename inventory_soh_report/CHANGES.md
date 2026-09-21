@@ -317,3 +317,90 @@ Confirmed in the Odoo shell: the new filter's domain correctly narrows
 "Group By → Type of Product" totals (Finished Good 1.0, Raw Material
 1,357,291.72568, Retail 0.0) are byte-for-byte identical to before this
 change.
+
+---
+
+# kg conversion widened to catch products mis-set as "Units" (2026-09-21)
+
+## In plain terms
+
+Some products — Rock salt being the one that surfaced this — had their
+own "Unit of Measure" field set to **"Units"**, but every real recipe
+(BOM) line and every actual stock transaction for them was entered in
+**grams**. The kg-conversion feature only ever looked at that one "Unit
+of Measure" field to decide whether to convert a number to kg, so for
+these products it did nothing — the report was showing raw gram figures
+dressed up as if they were "Units" (e.g. Rock salt's Consumption showed
+141,746, when it's really 141,746 grams = 141.746 kg). Checked the whole
+database: **92 products** have this exact mismatch, several Finished
+Goods among them. All 92 are now converted correctly.
+
+## Why
+
+User pointed out Rock salt's numbers looked far too large to be real
+stock, and asked to prove where that number was coming from. Traced it
+to the product's own master data: UoM field says "Units", but its BOM
+lines (5.35, 6.71, 200, etc.) and every stock move for it were recorded
+in grams. Changing the product's UoM field directly in the UI wasn't an
+option — Odoo blocks editing a product's UoM once it has been used in
+stock moves (all these products already have hundreds of consumed MOs).
+So the fix had to live in the report's own logic instead.
+
+Explicitly asked and confirmed with the user: apply this to **all 92**
+affected products, including the Finished Goods among them, not just Raw
+Materials (the safer, narrower option was offered and declined).
+
+## What changed
+
+`models/inventory_soh_report.py`: a new `gram_products` CTE finds every
+product with at least one **done** stock move that was actually recorded
+in grams (looking at the move's own `product_uom`, not the product's
+master UoM field). The `kg_factor` calculation now converts to kg if
+**either** the product's own UoM field says "g" **or** the product shows
+up in `gram_products` — so a product transacted in grams gets treated as
+grams for this report's display, regardless of what its master UoM field
+claims.
+
+This changes the *detection*, not the conversion math itself — still the
+same 0.001 factor, applied to the same 8 columns (On Hand, Purchased,
+Consumption, Return, Wastage, Ideal SOH, Actual SOH, Variance); Value is
+still deliberately left unconverted (currency, not quantity).
+
+`extra_addons/home_kouzina/mo_raw_material_consumption/models/mo_raw_material_consumption.py`
+got the identical `gram_products` detection added to its own `qty_consumed`
+conversion, so the two reports never disagree with each other on the same
+product (they're documented as using "the same gram→kg conversion" —
+this keeps that true after today's fix).
+
+## Impact
+
+- 92 products' numbers change today: anything previously showing a
+  suspiciously huge "Units" figure that was actually grams now correctly
+  shows a realistic kg figure (e.g. Rock salt Consumption: 141,746.000 →
+  141.746; On Hand: 1,999,858.254 → 1,999.858).
+- On Hand specifically comes from `stock.quant`, which has no per-row
+  UoM of its own — for these 92 products, On Hand is now treated as
+  grams too, on the working assumption that a product transacted in
+  grams everywhere else was also physically counted in grams. This is a
+  reasonable assumption, not a mathematical certainty — flagged here in
+  case any of these 92 ever turns out to have a genuinely mixed history.
+- Every other product (already correctly set to "g", or genuinely
+  transacted in "Units"/other UoMs) is completely unaffected.
+- The real, underlying fix — correcting these 92 products' actual "Unit
+  of Measure" field in Odoo — is still recommended when practical; this
+  report-level fix makes the numbers correct today without requiring
+  that (which Odoo currently blocks anyway, since they already have
+  transaction history).
+
+## Verified
+
+- Module upgrade (`-u inventory_soh_report,mo_raw_material_consumption
+  --stop-after-init`) loaded cleanly, 255 modules, no errors.
+- Rock salt: Inventory SOH Report Consumption now reads 141.746, and
+  MO-wise Raw Material Consumption's own 16 MO rows for Rock salt sum to
+  the identical 141.746 — the two reports agree exactly.
+- Spot-checked Black Pepper Whole (KG) and Coriander (two of the other
+  91 affected products): both now show the correctly scaled-down kg
+  figures instead of their previous six-digit "Units" numbers.
+- Confirmed products NOT in the 92 (e.g. Cinnamon, whose Consumption is
+  genuinely 0) are unaffected.

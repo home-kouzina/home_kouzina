@@ -105,6 +105,19 @@ class MoRawMaterialConsumption(models.Model):
                   AND sm.raw_material_production_id IS NOT NULL
                   AND pp2.is_finished_good = FALSE
                 GROUP BY sm.raw_material_production_id, sm.product_id
+            ),
+
+            -- ─── Same detection Inventory SOH Report uses: products whose
+            --     own "Unit of Measure" field doesn't say "g", but whose
+            --     real done stock moves were actually recorded in grams
+            --     (a data-setup mismatch on some raw materials, e.g. Rock
+            --     salt). Kept identical between the two reports so they
+            --     never disagree with each other on the same product. ────
+            gram_products AS (
+                SELECT DISTINCT sm.product_id
+                FROM stock_move sm
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                WHERE sm.state = 'done' AND mu.name->>'en_US' = 'g'
             )
 
             -- ─── Final SELECT: attach MO + product info, apply kg factor ───
@@ -119,18 +132,23 @@ class MoRawMaterialConsumption(models.Model):
                 pt.uom_id,
                 COALESCE(pp.default_code, pt.default_code)  AS sku,
 
-                -- Same gram→kg report-display conversion used by
-                -- Inventory SOH Report: 1 unless the product's UoM is
-                -- grams, in which case 0.001 (so 45g reads as 0.045).
+                -- Same gram->kg report-display conversion used by
+                -- Inventory SOH Report: 0.001 if the product's UoM says
+                -- "g", OR if its real moves were actually recorded in
+                -- grams regardless of what the UoM field says; else 1.
                 c.qty_consumed
-                    * CASE WHEN uu.name->>'en_US' = 'g' THEN 0.001 ELSE 1 END
-                                                             AS qty_consumed
+                    * CASE
+                        WHEN uu.name->>'en_US' = 'g' THEN 0.001
+                        WHEN gp.product_id IS NOT NULL THEN 0.001
+                        ELSE 1
+                      END                                  AS qty_consumed
 
             FROM consumption c
             JOIN mrp_production    mp ON mp.id = c.mo_id
             JOIN product_product   pp ON pp.id = c.product_id
             JOIN product_template  pt ON pt.id = pp.product_tmpl_id
             LEFT JOIN uom_uom      uu ON uu.id = pt.uom_id
+            LEFT JOIN gram_products gp ON gp.product_id = pp.id
 
             )
         """ % self._table)
