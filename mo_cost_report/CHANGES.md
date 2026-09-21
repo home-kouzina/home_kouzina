@@ -125,3 +125,154 @@ number or filter.
   (which is the factually correct answer for those, not a bug).
 - Module upgrade loaded cleanly with the new manifest dependency in place,
   no errors.
+
+---
+
+# Cost column changed to order total (2026-09-21)
+
+## In plain terms
+
+The "Cost" column now shows the **total cost for that whole Manufacturing
+Order** — unit Cost price × Quantity produced — instead of just the
+per-unit Cost price. E.g. a product with a ₹30 Cost price, made in a batch
+of 100 units, now shows **₹3,000** for that row instead of ₹30.
+
+## Why
+
+This reverses the earlier, deliberate "flat, not multiplied by quantity"
+decision recorded above (2026-09-17 entry) — that was what was explicitly
+asked for at the time. The user has now asked for the opposite: the Cost
+column should reflect what that specific order actually cost in total, not
+just the per-unit rate.
+
+## What changed
+
+`models/mo_cost_report.py`, the `mo_cost` column in the SQL view:
+
+```
+mo_cost = product variant's Cost price x mp.product_qty (order total)
+```
+
+Nothing else on the view or the report changed — same field name, same
+column position, same `widget="monetary"` display with a "Total Cost" sum
+at the bottom of the list (that sum will now also read differently, since
+it's summing real order totals instead of summing repeated per-unit
+prices).
+
+## Impact
+
+- Every row's Cost value goes up by a factor of that order's Quantity
+  (e.g. Qty 1 orders are unaffected; Qty 100 orders now show 100x their
+  old figure).
+- The "Total Cost" footer sum changes accordingly — it now represents the
+  sum of real order totals, which is a meaningful number to add up (the
+  old per-unit-only sum was not).
+- The same live-Cost-price caveat from the 2026-09-17 entry still applies:
+  this still reflects *today's* Cost price, not the price on the day the
+  order was actually completed.
+
+## Verified
+
+- Module upgrade (`-u mo_cost_report --stop-after-init`) loaded cleanly,
+  255 modules, no errors.
+- Checked live: `HK_BBM_03` MOs with Qty 100.00 and unit Cost ₹30 now show
+  Cost = ₹3,000.00 (30 × 100), across all 5 sampled MOs for that SKU.
+
+---
+
+# Production Date split into two export columns (2026-09-21)
+
+## In plain terms
+
+When exporting the Production Report to Excel, "Production Date" used to
+come out as one column with the date and time glued together (e.g.
+"2026-09-17 16:36:42"). Two new columns are now available —
+**"Production Date (Date)"** and **"Production Date (Time)"** — showing
+just the date or just the time on their own, so they can be exported into
+two separate spreadsheet columns instead of one combined cell.
+
+## Why
+
+Asked directly: is it possible to have date and time come out as two
+separate columns on export, without touching how the report looks
+on-screen otherwise? Yes — Odoo's export tool exports whatever a field
+holds as one cell, so getting two cells means having two fields.
+
+## What changed
+
+`models/mo_cost_report.py`:
+
+- Two new **non-stored, computed** fields — `production_date_only`
+  (Date) and `production_time_only` (Char, "HH:MM:SS") — each derived
+  from the existing `date_start` field via a small Python compute method,
+  not part of the SQL view itself.
+- The split uses `fields.Datetime.context_timestamp(...)` — the exact
+  same timezone-conversion Odoo already uses to display "Production
+  Date" on screen — so these two new values always match what's shown
+  in the existing Production Date column for the same viewer, they're
+  not computed from the raw UTC database value.
+
+`views/mo_cost_report_views.xml`: both new fields added to the list view
+right after "Production Date", as **hidden-by-default** optional columns
+(`optional="hide"`) — nothing currently visible on the report changes
+unless someone explicitly turns them on via the column picker (the ⚙/sliders
+icon at the top-right of the list) or adds them from the export wizard's
+field picker.
+
+## Impact
+
+- Nothing visible changes by default — existing "Production Date" column,
+  its data, and every other column are untouched.
+- Two new optional columns exist for anyone who wants date/time split on
+  export: turn them on via the column picker before exporting (or pick
+  them directly in the Export dialog's field list, they don't need to be
+  visible in the list view first).
+- These two fields are computed on the fly (not stored), so they always
+  reflect the current value of Production Date — nothing to keep in sync.
+
+## Verified
+
+- Module upgrade (`-u mo_cost_report --stop-after-init`) loaded cleanly,
+  255 modules, no errors.
+- Checked live: for MOs with Production Date "2026-09-05 05:43:07" (raw),
+  the new fields returned Date = "2026-09-05" and Time = "07:43:07" —
+  correctly split and timezone-adjusted the same way the existing
+  Production Date column already displays.
+
+---
+
+# Split Date/Time columns made the default, combined column hidden (2026-09-21, same day)
+
+## In plain terms
+
+Turning the new columns on by hand every time (via the column picker) was
+one extra step nobody wants to repeat. Flipped the default: **"Production
+Date (Date)"** and **"Production Date (Time)"** now show automatically
+when the report is opened, and the old combined **"Production Date"**
+column is now the one that's hidden (still available via the column
+picker or the export field list, just not shown by default anymore).
+
+## What changed
+
+`views/mo_cost_report_views.xml`, only the `optional=` attribute flipped
+on three existing `<field>` lines — no new fields, no field removed:
+
+- `date_start` ("Production Date"): `optional="show"` → `optional="hide"`
+- `production_date_only` ("Production Date (Date)"): `optional="hide"` → `optional="show"`
+- `production_time_only` ("Production Date (Time)"): `optional="hide"` → `optional="show"`
+
+## Impact
+
+- Opening the Production Report now shows Date and Time as two separate
+  columns straight away — nothing to turn on manually.
+- The combined "Production Date" column is no longer shown by default,
+  but the field itself, its data, and its Group By ("Production Date
+  (Month)") in the search bar are all untouched — it can still be turned
+  back on via the column picker at any time.
+- Purely a display-default change; no data, computation, or export
+  behavior changed beyond which columns appear out of the box.
+
+## Verified
+
+- Module upgrade (`-u mo_cost_report --stop-after-init`) loaded cleanly,
+  255 modules, no errors.
