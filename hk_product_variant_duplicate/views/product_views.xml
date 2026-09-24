@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Re-enables "Duplicate" on the Product Variant form (Products > Product
+         Variants > open one). Core Odoo sets duplicate="false" here on
+         purpose (see product.product_normal_form_view in
+         product/views/product_views.xml) because product.product's own
+         copy() duplicates the whole Product Template, not just this one
+         variant - explicit request, made with that behavior understood. -->
+    <record id="product_normal_form_view_enable_duplicate" model="ir.ui.view">
+        <field name="name">product.product.form.enable.duplicate</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_normal_form_view"/>
+        <field name="arch" type="xml">
+            <form position="attributes">
+                <attribute name="duplicate">true</attribute>
+            </form>
+        </field>
+    </record>
+
+    <!-- Same flag, same reason, for the Product Variants list view. -->
+    <record id="product_product_tree_view_enable_duplicate" model="ir.ui.view">
+        <field name="name">product.product.list.enable.duplicate</field>
+        <field name="model">product.product</field>
+        <field name="inherit_id" ref="product.product_product_tree_view"/>
+        <field name="arch" type="xml">
+            <list position="attributes">
+                <attribute name="duplicate">true</attribute>
+            </list>
+        </field>
+    </record>
+
+</odoo>
