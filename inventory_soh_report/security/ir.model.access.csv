@@ -1,3 +1,14 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_inventory_soh_report_user,inventory.soh.report.user,model_inventory_soh_report,stock.group_stock_user,1,0,0,0
 access_inventory_soh_report_manager,inventory.soh.report.manager,model_inventory_soh_report,stock.group_stock_manager,1,0,0,0
+access_soh_week_user,soh.week.user,model_soh_week,stock.group_stock_user,1,1,1,0
+access_soh_week_manager,soh.week.manager,model_soh_week,stock.group_stock_manager,1,1,1,1
+access_soh_week_line_user,soh.week.line.user,model_soh_week_line,stock.group_stock_user,1,1,1,0
+access_soh_week_line_manager,soh.week.line.manager,model_soh_week_line,stock.group_stock_manager,1,1,1,1
+access_soh_download_user,soh.download.user,model_soh_download,stock.group_stock_user,1,1,1,0
+access_soh_download_line_user,soh.download.line.user,model_soh_download_line,stock.group_stock_user,1,1,1,0
+access_soh_upload_log_user,soh.upload.log.user,model_soh_upload_log,stock.group_stock_user,1,1,1,0
+access_soh_upload_log_manager,soh.upload.log.manager,model_soh_upload_log,stock.group_stock_manager,1,1,1,1
+access_soh_upload_log_line_user,soh.upload.log.line.user,model_soh_upload_log_line,stock.group_stock_user,1,1,1,0
+access_soh_physical_inventory_wizard_user,soh.physical.inventory.wizard.user,model_soh_physical_inventory_wizard,stock.group_stock_user,1,1,1,1
+access_soh_physical_inventory_wizard_line_user,soh.physical.inventory.wizard.line.user,model_soh_physical_inventory_wizard_line,stock.group_stock_user,1,1,1,1

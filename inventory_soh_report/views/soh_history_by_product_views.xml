@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        SOH History by Product: every product row of every closed week in one
+        list, so it can be grouped by Month and by Product. Read-only; it shows
+        the frozen lines that Close Week already saves (soh.week.line).
+    -->
+
+    <record id="view_soh_history_by_product_list" model="ir.ui.view">
+        <field name="name">soh.week.line.history.by.product.list</field>
+        <field name="model">soh.week.line</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <list string="SOH History by Product" create="false" edit="false" delete="false">
+                <field name="week_id"/>
+                <field name="week_closed_on" optional="hide"/>
+                <field name="sku" optional="show"/>
+                <field name="product_id"/>
+                <field name="categ_id" optional="hide"/>
+                <field name="product_category_type" optional="show"/>
+                <field name="uom_name" optional="hide"/>
+                <field name="qty_opening" options="{'digits': [16, 3]}" sum="Total Opening"/>
+                <field name="qty_inward" options="{'digits': [16, 3]}" sum="Total Purchased"/>
+                <field name="qty_produced" options="{'digits': [16, 3]}" sum="Total Produced"/>
+                <field name="qty_consumption" options="{'digits': [16, 3]}" sum="Total Consumption"/>
+                <field name="qty_return" options="{'digits': [16, 3]}" sum="Total Returns"/>
+                <field name="qty_wastage" options="{'digits': [16, 3]}" sum="Total Wastage"/>
+                <field name="ideal_soh" options="{'digits': [16, 3]}" sum="Total Ideal SOH"/>
+                <field name="actual_soh" options="{'digits': [16, 3]}" sum="Total Actual SOH"/>
+                <field name="variance" options="{'digits': [16, 3]}" sum="Total Variance"
+                       decoration-danger="variance &lt; 0" decoration-success="variance &gt; 0"
+                       decoration-muted="variance == 0"/>
+                <field name="variance_value" options="{'digits': [16, 2]}" sum="Total Value"
+                       decoration-danger="variance_value &lt; 0" decoration-success="variance_value &gt; 0"
+                       decoration-muted="variance_value == 0"/>
+                <field name="consumption_value" options="{'digits': [16, 2]}" sum="Total Consumption$"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_soh_history_by_product_search" model="ir.ui.view">
+        <field name="name">soh.week.line.history.by.product.search</field>
+        <field name="model">soh.week.line</field>
+        <field name="priority">30</field>
+        <field name="arch" type="xml">
+            <search string="SOH History by Product">
+                <field name="product_id"/>
+                <field name="sku"/>
+                <field name="week_id"/>
+                <field name="categ_id"/>
+                <filter string="Has Variance" name="filter_variance" domain="[('variance', '!=', 0)]"/>
+                <separator/>
+                <filter string="Finished Good" name="filter_fg" domain="[('product_category_type', '=', 'Finished Good')]"/>
+                <filter string="Raw Material" name="filter_rm" domain="[('product_category_type', '=', 'Raw Material')]"/>
+                <separator/>
+                <filter string="Week Closed On" name="filter_closed_on" date="week_closed_on"/>
+                <group expand="0" string="Group By">
+                    <filter string="Month" name="groupby_month" context="{'group_by': 'week_closed_on:month'}"/>
+                    <filter string="Product" name="groupby_product" context="{'group_by': 'product_id'}"/>
+                    <filter string="Week" name="groupby_week" context="{'group_by': 'week_id'}"/>
+                    <filter string="Type of Product" name="groupby_type" context="{'group_by': 'product_category_type'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_soh_history_by_product" model="ir.actions.act_window">
+        <field name="name">SOH History by Product</field>
+        <field name="res_model">soh.week.line</field>
+        <field name="view_mode">list</field>
+        <field name="view_id" ref="view_soh_history_by_product_list"/>
+        <field name="search_view_id" ref="view_soh_history_by_product_search"/>
+        <!-- Only rows whose count differed from Ideal SOH, from closed weeks. -->
+        <field name="domain">[('week_id.state', '=', 'closed'), ('variance', '!=', 0)]</field>
+        <!-- Opens grouped by Product. -->
+        <field name="context">{'create': False, 'search_default_groupby_product': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No closed weeks yet.</p>
+            <p>Each product's row from every closed week shows here. Group by Month and Product
+               to see which products' counts changed and by how much.</p>
+        </field>
+    </record>
+
+    <!-- No menu entry: opened from the "By Product" button on SOH Weekly History. -->
+
+</odoo>

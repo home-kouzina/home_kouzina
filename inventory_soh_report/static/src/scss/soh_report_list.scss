@@ -1,0 +1,13 @@
+// Inventory SOH Report: Odoo truncates the breadcrumb box, so with the
+// "Upload Physical Inventory" / "Close Week" buttons next to the gear the
+// report title was squeezed to "I.". Keep the title at full width there.
+.o_breadcrumb:has(.o_soh_week_actions) {
+    overflow: visible;
+
+    .o_last_breadcrumb_item,
+    .o_last_breadcrumb_item > span {
+        flex-shrink: 0;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}
