@@ -22,7 +22,7 @@
         - SOH Upload Log: every upload, including rejected files.
     """,
     'author': 'Custom',
-    'depends': ['stock', 'purchase', 'sale_stock', 'mrp', 'hk_inventory_variation', 'visible_group_export'],
+    'depends': ['stock', 'purchase', 'sale_stock', 'mrp', 'home_kouzina_sales', 'hk_inventory_variation', 'visible_group_export'],
     'external_dependencies': {'python': ['openpyxl', 'xlsxwriter']},
     'data': [
         'security/ir.model.access.csv',
