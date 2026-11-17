@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        The automatic Monday close was removed (2026-11-12): a week is closed
+        only when someone presses Close Week. This removes the scheduled
+        action from databases where an earlier version had created it.
+    -->
+    <delete model="ir.cron" search="[('cron_name', '=', 'Inventory SOH: close week every Monday')]"/>
+</odoo>

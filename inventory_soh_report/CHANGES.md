@@ -404,3 +404,146 @@ this keeps that true after today's fix).
   figures instead of their previous six-digit "Units" numbers.
 - Confirmed products NOT in the 92 (e.g. Cinnamon, whose Consumption is
   genuinely 0) are unaffected.
+
+---
+
+# Weekly physical count, upload and history (2026-11-12)
+
+In plain terms: the report now runs week by week. Each week the store
+downloads the report, types the physical count into Actual SOH and uploads
+it. Odoo stock is corrected to the count, and when the week is closed the
+full report is kept in a history.
+
+## What changed
+
+**New on the report (next to the gear icon):**
+
+- **Upload Physical Inventory** opens a wizard:
+  1. *Download Inventory*: the full report as Excel. A copy of each
+     product's Actual SOH at that moment is saved (`soh.download`).
+  2. *Upload Inventory* and *Check File*: only rows whose Actual SOH
+     differs from the downloaded copy count as changed. Stock moved between
+     download and upload is never undone. Bad files (changed ID cell,
+     duplicate rows, empty or non-numeric Actual SOH, file from a closed
+     week) are rejected as a whole and logged.
+  3. *Confirm Upload*: for each changed product, stock is set to the counted
+     quantity with standard Odoo inventory adjustments (move name
+     "SOH Count <week> (<user>)"). The difference is booked in the product's
+     only location if all its stock is in one place, otherwise in the main
+     warehouse stock location. Decreases come from the oldest lots first;
+     increases go to the newest lot. Grams/kg are converted back internally.
+- **Close Week** freezes the full report into the week and starts the next
+  week, with this week's Actual SOH as Opening.
+
+**New menus under Inventory › Reporting:** SOH Weekly History, SOH Upload Log.
+
+**Report columns and formulas:**
+
+| Column | Before | Now |
+|---|---|---|
+| Opening | not shown | Actual SOH of the last closed week (first week: on-hand when it opened) |
+| Purchased / Consumption / Return / Wastage | all-time totals | only since the open week started |
+| Consumption | sales only if "Is Finished Good" ticked; MO components only if the flag was False | customer deliveries (minus customer returns) + MO component moves, for every product |
+| Ideal SOH | On Hand + Purchased − … (counted receipts twice) | Opening + Purchased − Consumption − Return − Wastage |
+| Actual SOH | Ideal − Variance | live on-hand stock |
+| Variance | latest IVR, sign reversed | Actual − Ideal (a shortage is negative) |
+
+"Current On Hand" is still available but hidden by default (it equals
+Actual SOH). The report no longer reads Inventory Variation (IVR); that
+module is unchanged.
+
+## Files
+
+- New: `models/soh_week.py`, `models/soh_upload.py`, `wizard/`,
+  `views/soh_week_views.xml`, `views/soh_upload_log_views.xml`,
+  `data/soh_week_data.xml`, `static/src/js/soh_report_list_controller.js`,
+  `static/src/xml/soh_report_list_buttons.xml`
+- Changed: `models/inventory_soh_report.py`, `models/__init__.py`,
+  `__init__.py`, `__manifest__.py`, `views/inventory_soh_report_views.xml`,
+  `views/inventory_soh_report_menu.xml`, `security/ir.model.access.csv`
+
+## Verified (home_nov11, in a rolled-back transaction)
+
+- Upgrade opened "Week 46 - 2026" with Opening = on-hand for all 955 rows;
+  Variance 0 everywhere.
+- Download → changed Tailed Pepper 97 → 100 and HK_USP_03 57 → 55 →
+  upload: 955 rows read, 2 changed. Confirm: stock became 100 and 55;
+  report showed Variance +3 and −2.
+- A file with a broken ID cell was rejected and nothing was saved.
+- Close Week: frozen lines kept Actual 100 / 55 and Variance +3 / −2; the
+  new week opened with Opening 100 / 55.
+- Over the last 28 days the new Consumption counts sales for 33 Retail
+  products (before: 0).
+
+### Follow-ups (2026-11-12)
+
+- SOH Weekly History lists closed weeks only; the open week lives in the
+  Inventory SOH Report.
+- A week closes only when someone presses Close Week. An automatic Monday
+  close was tried and removed; `data/soh_week_cron.xml` now only deletes
+  that scheduled action where it exists.
+- Weeks and history contain active products only, exactly the report's rows
+  (archived products with leftover stock were adding 12 empty lines).
+- Download / Check File work when only one company is selected (product
+  names read as superuser); a changed count on a non-storable product is
+  rejected with a clear message.
+
+### Manager's weekly flow (2026-11-16)
+
+- Report shows Finished Goods and Raw Materials only (no Retail, no Services).
+- New **Produced** column: finished products of MOs marked Done this week.
+  Ideal SOH = Opening + Purchased + Produced − Consumption − Return − Wastage.
+- **Actual SOH = this week's physical count** (stored on the week line), 0
+  until the product is counted, back to 0 after Close Week. Variance and
+  Value only for counted products.
+- Excel download: ID (hidden), SKU, Product, UoM and an **empty** Physical
+  Inventory column. Filled cell = count (0 = counted, none found); blank =
+  not counted, skipped. Upload still sets Odoo stock to the count.
+- Close Week button shows only after an applied upload this week; History
+  button on the report opens SOH Weekly History.
+- Next week's Opening = Odoo on-hand at Close Week (equals the count when
+  the week is closed right after the upload).
+- Verified on home_nov11 (rolled back): Black salt 214 → counted 210:
+  Actual 210, Variance −4, on-hand 210; history kept it; next week Opening
+  210, Actual 0. Produced over 90 days: 65 FG products, 0 RM.
+
+### Consumption$ column and Value fix (2026-11-16)
+
+- New **Consumption$** column (report and history) = Consumption × Cost
+  price: the cost of what was used or sold in the week, as in the client's
+  sheet.
+- Fixed Value (Variance₹) and Consumption$ for the ~80 products whose UoM
+  field says "Units" but whose moves are in grams: their Cost is entered
+  per kg, but the quantity was multiplied in grams (1000× too high). Real
+  "g" products keep Cost per gram. Example: Black Pepper Whole 96.617 kg ×
+  ₹832 = ₹80,385 (was ₹8.04 crore).
+
+### Count file pre-filled with Ideal SOH (2026-11-16)
+
+- Download: Physical Inventory column is pre-filled with each product's
+  Ideal SOH (blank for products that don't track stock). The store changes
+  only the rows where the count differs.
+- Upload: every filled row is a count. An unchanged row counts as exactly
+  Ideal SOH (not the 3-decimal rounded value), so its Variance is 0 and no
+  stock move is made. A cleared cell is skipped. A negative value is only
+  accepted when it is the unchanged Ideal SOH.
+- Variance (and Value) rounded to the 3 decimals the report shows.
+- Verified (rolled back): changed Black salt 214 → 210 and Turmeric 52 → 53;
+  447 products counted, only those 2 show Variance (−4, +1) and only 2
+  stock moves were made.
+
+### SOH History by Product (2026-11-17)
+
+- New menu Inventory › Reporting › **SOH History by Product**: every product
+  row of every closed week in one read-only list (new list/search views on
+  soh.week.line, priority 30, so the existing week views are untouched).
+- Filters: Has Variance, Finished Good, Raw Material, Week Closed On.
+  Group By: Month (month the week closed), Product, Week, Type of Product.
+- New stored related field soh.week.line.week_closed_on (= week's Closed On)
+  for the Month grouping. Nothing else changed.
+- (2026-11-17) SOH History by Product no longer has its own menu entry; it
+  opens from a "By Product" button on the SOH Weekly History list.
+- (2026-11-17) SOH History by Product shows only rows whose count differed
+  from Ideal SOH (variance ≠ 0) and opens grouped by Month, then Week.
+- (2026-11-17) SOH Weekly History menu entry removed; it opens only from the
+  "History" button on the Inventory SOH Report.

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!--
+        Make sure one open counting week exists. On first install this opens
+        week 1 with today's on-hand stock as Opening. On later upgrades it
+        does nothing, because a week is already open.
+    -->
+    <function model="soh.week" name="_ensure_open_week"/>
+</odoo>

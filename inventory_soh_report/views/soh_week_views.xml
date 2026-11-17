@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- WEEK LINES (frozen report rows) -->
+    <record id="view_soh_week_line_list" model="ir.ui.view">
+        <field name="name">soh.week.line.list</field>
+        <field name="model">soh.week.line</field>
+        <field name="arch" type="xml">
+            <list string="Weekly SOH Report" create="false" edit="false" delete="false">
+                <field name="week_id" optional="hide"/>
+                <field name="sku" optional="show"/>
+                <field name="product_id"/>
+                <field name="categ_id" optional="show"/>
+                <field name="product_category_type" optional="show"/>
+                <field name="uom_name" optional="hide"/>
+                <field name="qty_opening" options="{'digits': [16, 3]}" sum="Total Opening"/>
+                <field name="qty_inward" options="{'digits': [16, 3]}" sum="Total Purchased"/>
+                <field name="qty_produced" options="{'digits': [16, 3]}" sum="Total Produced"/>
+                <field name="qty_consumption" options="{'digits': [16, 3]}" sum="Total Consumption"/>
+                <field name="qty_return" options="{'digits': [16, 3]}" sum="Total Returns"/>
+                <field name="qty_wastage" options="{'digits': [16, 3]}" sum="Total Wastage"/>
+                <field name="ideal_soh" options="{'digits': [16, 3]}" sum="Total Ideal SOH"/>
+                <field name="actual_soh" options="{'digits': [16, 3]}" sum="Total Actual SOH"
+                       decoration-danger="actual_soh &lt; 0"/>
+                <field name="variance" options="{'digits': [16, 3]}" sum="Total Variance"
+                       decoration-danger="variance &lt; 0" decoration-success="variance &gt; 0"
+                       decoration-muted="variance == 0"/>
+                <field name="variance_value" options="{'digits': [16, 2]}" sum="Total Value"
+                       decoration-danger="variance_value &lt; 0" decoration-success="variance_value &gt; 0"
+                       decoration-muted="variance_value == 0"/>
+                <field name="consumption_value" options="{'digits': [16, 2]}" sum="Total Consumption$"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_soh_week_line_search" model="ir.ui.view">
+        <field name="name">soh.week.line.search</field>
+        <field name="model">soh.week.line</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="sku"/>
+                <field name="categ_id"/>
+                <field name="week_id"/>
+                <filter string="Finished Good" name="filter_fg" domain="[('product_category_type', '=', 'Finished Good')]"/>
+                <filter string="Raw Material" name="filter_rm" domain="[('product_category_type', '=', 'Raw Material')]"/>
+                <separator/>
+                <filter string="Has Variance" name="filter_variance" domain="[('variance', '!=', 0)]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Week" name="groupby_week" context="{'group_by': 'week_id'}"/>
+                    <filter string="Type of Product" name="groupby_type" context="{'group_by': 'product_category_type'}"/>
+                    <filter string="Product Category" name="groupby_categ" context="{'group_by': 'categ_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- WEEKS -->
+    <record id="view_soh_week_list" model="ir.ui.view">
+        <field name="name">soh.week.list</field>
+        <field name="model">soh.week</field>
+        <field name="arch" type="xml">
+            <list string="SOH Weekly History" create="false" delete="false"
+                  decoration-info="state == 'open'">
+                <header>
+                    <button name="%(inventory_soh_report.action_soh_history_by_product)d" type="action"
+                            string="By Product" display="always" class="btn-primary" icon="fa-cubes"/>
+                </header>
+                <field name="name"/>
+                <field name="date_start"/>
+                <field name="date_end"/>
+                <field name="state" widget="badge"
+                       decoration-success="state == 'open'" decoration-info="state == 'closed'"/>
+                <field name="changed_count"/>
+                <field name="total_value" options="{'digits': [16, 2]}"
+                       decoration-danger="total_value &lt; 0" decoration-success="total_value &gt; 0"/>
+                <field name="closed_by_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_soh_week_form" model="ir.ui.view">
+        <field name="name">soh.week.form</field>
+        <field name="model">soh.week</field>
+        <field name="arch" type="xml">
+            <form string="Week" create="false" delete="false" edit="false">
+                <header>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_lines" type="object" class="oe_stat_button"
+                                icon="fa-table" string="Open as List"/>
+                    </div>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <div class="alert alert-info" role="status" invisible="state != 'closed'">
+                        Frozen copy of the Inventory SOH Report as it was when this week was closed.
+                        These figures do not change.
+                    </div>
+                    <div class="alert alert-warning" role="status" invisible="state != 'open'">
+                        This week is still open. The live figures are in the Inventory SOH Report;
+                        the lines here hold only each product's Opening until the week is closed.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="date_start"/>
+                            <field name="date_end"/>
+                            <field name="closed_by_id"/>
+                        </group>
+                        <group>
+                            <field name="changed_count"/>
+                            <field name="total_value" options="{'digits': [16, 2]}"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Report" name="report">
+                            <field name="line_ids">
+                                <list>
+                                    <field name="sku" optional="show"/>
+                                    <field name="product_id"/>
+                                    <field name="product_category_type" optional="show"/>
+                                    <field name="qty_opening" options="{'digits': [16, 3]}" sum="Total Opening"/>
+                                    <field name="qty_inward" options="{'digits': [16, 3]}" sum="Total Purchased"/>
+                <field name="qty_produced" options="{'digits': [16, 3]}" sum="Total Produced"/>
+                                    <field name="qty_consumption" options="{'digits': [16, 3]}" sum="Total Consumption"/>
+                                    <field name="qty_return" options="{'digits': [16, 3]}" sum="Total Returns"/>
+                                    <field name="qty_wastage" options="{'digits': [16, 3]}" sum="Total Wastage"/>
+                                    <field name="ideal_soh" options="{'digits': [16, 3]}" sum="Total Ideal SOH"/>
+                                    <field name="actual_soh" options="{'digits': [16, 3]}" sum="Total Actual SOH"/>
+                                    <field name="variance" options="{'digits': [16, 3]}" sum="Total Variance"
+                                           decoration-danger="variance &lt; 0" decoration-success="variance &gt; 0"/>
+                                    <field name="variance_value" options="{'digits': [16, 2]}" sum="Total Value"
+                                           decoration-danger="variance_value &lt; 0" decoration-success="variance_value &gt; 0"/>
+                <field name="consumption_value" options="{'digits': [16, 2]}" sum="Total Consumption$"/>
+                                </list>
+                            </field>
+                        </page>
+                        <page string="Uploads" name="uploads">
+                            <field name="upload_log_ids">
+                                <list>
+                                    <field name="create_date" string="Date"/>
+                                    <field name="user_id"/>
+                                    <field name="file_name"/>
+                                    <field name="rows_read"/>
+                                    <field name="rows_changed"/>
+                                    <field name="result" widget="badge"
+                                           decoration-success="result == 'applied'"
+                                           decoration-danger="result == 'rejected'"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_soh_week" model="ir.actions.act_window">
+        <field name="name">SOH Weekly History</field>
+        <field name="res_model">soh.week</field>
+        <field name="view_mode">list,form</field>
+        <!-- History shows closed weeks only. The open week lives in the
+             Inventory SOH Report until it is closed. -->
+        <field name="domain">[('state', '=', 'closed')]</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No closed weeks yet.</p>
+            <p>When someone presses Close Week on the Inventory SOH Report,
+               the full report of that week is kept here.
+               The current week is in the Inventory SOH Report.</p>
+        </field>
+    </record>
+
+</odoo>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_soh_upload_log_list" model="ir.ui.view">
+        <field name="name">soh.upload.log.list</field>
+        <field name="model">soh.upload.log</field>
+        <field name="arch" type="xml">
+            <list string="SOH Upload Log" create="false" edit="false" delete="false">
+                <field name="create_date" string="Date and Time"/>
+                <field name="week_id"/>
+                <field name="file_name"/>
+                <field name="user_id"/>
+                <field name="rows_read"/>
+                <field name="rows_changed"/>
+                <field name="result" widget="badge"
+                       decoration-success="result == 'applied'"
+                       decoration-danger="result == 'rejected'"/>
+                <field name="note" optional="show"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_soh_upload_log_form" model="ir.ui.view">
+        <field name="name">soh.upload.log.form</field>
+        <field name="model">soh.upload.log</field>
+        <field name="arch" type="xml">
+            <form string="Upload" create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="create_date" string="Date and Time"/>
+                            <field name="week_id"/>
+                            <field name="user_id"/>
+                            <field name="file_data" filename="file_name"/>
+                            <field name="file_name" invisible="1"/>
+                        </group>
+                        <group>
+                            <field name="result" widget="badge"
+                                   decoration-success="result == 'applied'"
+                                   decoration-danger="result == 'rejected'"/>
+                            <field name="rows_read"/>
+                            <field name="rows_changed"/>
+                        </group>
+                    </group>
+                    <field name="note" invisible="not note" nolabel="1"/>
+                    <field name="line_ids" invisible="not line_ids">
+                        <list>
+                            <field name="product_name" string="Product"/>
+                            <field name="uom_name"/>
+                            <field name="downloaded_qty" options="{'digits': [16, 3]}"/>
+                            <field name="counted_qty" options="{'digits': [16, 3]}"/>
+                            <field name="stock_change" options="{'digits': [16, 3]}"
+                                   decoration-danger="stock_change &lt; 0"
+                                   decoration-success="stock_change &gt; 0"/>
+                            <field name="location_id"/>
+                        </list>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_soh_upload_log_search" model="ir.ui.view">
+        <field name="name">soh.upload.log.search</field>
+        <field name="model">soh.upload.log</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="week_id"/>
+                <field name="user_id"/>
+                <field name="file_name"/>
+                <filter string="Applied" name="filter_applied" domain="[('result', '=', 'applied')]"/>
+                <filter string="Rejected" name="filter_rejected" domain="[('result', '=', 'rejected')]"/>
+                <group expand="0" string="Group By">
+                    <filter string="Week" name="groupby_week" context="{'group_by': 'week_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_soh_upload_log" model="ir.actions.act_window">
+        <field name="name">SOH Upload Log</field>
+        <field name="res_model">soh.upload.log</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No uploads yet.</p>
+            <p>Every physical count upload is recorded here, including rejected files.</p>
+        </field>
+    </record>
+
+</odoo>

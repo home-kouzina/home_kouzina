@@ -25,9 +25,6 @@
 
                 <separator/>
 
-                <filter string="Retail"
-                        name="filter_type_retail"
-                        domain="[('product_category_type', '=', 'Retail')]"/>
                 <filter string="Finished Good"
                         name="filter_type_finished_good"
                         domain="[('product_category_type', '=', 'Finished Good')]"/>
@@ -37,6 +34,12 @@
 
                 <separator/>
 
+                <filter string="Counted This Week"
+                        name="filter_counted"
+                        domain="[('is_counted', '=', True)]"/>
+                <filter string="Not Counted Yet"
+                        name="filter_not_counted"
+                        domain="[('is_counted', '=', False)]"/>
                 <filter string="Has Variance"
                         name="filter_has_variance"
                         domain="[('variance', '!=', 0)]"/>
@@ -72,6 +75,7 @@
         <field name="model">inventory.soh.report</field>
         <field name="arch" type="xml">
             <list string="Inventory SOH Report"
+                  js_class="soh_report_list"
                   create="false"
                   edit="false"
                   delete="false"
@@ -99,9 +103,15 @@
                        string="UoM"
                        optional="hide"/>
 
+                <field name="qty_opening"
+                       string="Opening"
+                       optional="show"
+                       options="{'digits': [16, 3]}"
+                       sum="Total Opening"/>
+
                 <field name="qty_on_hand"
                        string="Current On Hand"
-                       optional="show"
+                       optional="hide"
                        decoration-danger="qty_on_hand &lt;= 0"
                        decoration-success="qty_on_hand &gt; 0"
                        options="{'digits': [16, 3]}"
@@ -138,18 +148,20 @@
                        options="{'digits': [16, 3]}"
                        sum="Total Ideal SOH"/>
 
+                <field name="is_counted" column_invisible="1"/>
                 <field name="actual_soh"
                        string="Actual SOH"
                        optional="show"
-                       decoration-danger="actual_soh &lt; 0"
-                       decoration-success="actual_soh &gt;= 0"
+                       decoration-muted="not is_counted"
+                       decoration-success="is_counted"
                        options="{'digits': [16, 3]}"
                        sum="Total Actual SOH"/>
 
                 <field name="variance"
                        string="Variance"
                        optional="show"
-                       decoration-danger="variance &gt; 0"
+                       decoration-danger="variance &lt; 0"
+                       decoration-success="variance &gt; 0"
                        decoration-muted="variance == 0"
                        options="{'digits': [16, 3]}"
                        sum="Total Variance"/>
@@ -157,10 +169,17 @@
                 <field name="variance_value"
                        string="Value"
                        optional="show"
-                       decoration-danger="variance_value &gt; 0"
+                       decoration-danger="variance_value &lt; 0"
+                       decoration-success="variance_value &gt; 0"
                        decoration-muted="variance_value == 0"
                        options="{'digits': [16, 3]}"
                        sum="Total Value"/>
+
+                <field name="consumption_value"
+                       string="Consumption$"
+                       optional="show"
+                       options="{'digits': [16, 2]}"
+                       sum="Total Consumption$"/>
 
             </list>
         </field>

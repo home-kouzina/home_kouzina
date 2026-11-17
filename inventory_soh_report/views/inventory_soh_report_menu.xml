@@ -16,4 +16,16 @@
         sequence="25"
         groups="stock.group_stock_user"/>
 
+    <!-- SOH Weekly History has no menu entry: it opens from the "History"
+         button on the Inventory SOH Report. -->
+
+    <!-- Every physical count upload, including rejected files -->
+    <menuitem
+        id="menu_soh_upload_log"
+        name="SOH Upload Log"
+        parent="stock.menu_warehouse_report"
+        action="action_soh_upload_log"
+        sequence="27"
+        groups="stock.group_stock_user"/>
+
 </odoo>
