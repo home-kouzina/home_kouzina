@@ -60,18 +60,12 @@ class ProductProduct(models.Model):
         if history_vals:
             history_model.create(history_vals)
 
-    @api.depends(
-        'standard_price',
-        'labelled_product.standard_price',
-        'packaging_product.standard_price',
-    )
+    @api.depends('standard_price')
     def _compute_cog_before_sale(self):
+        # COG Before Sale = the product's own Cost (labelling and packaging
+        # costs are no longer added).
         for record in self:
-            record.cog_before_sale = (
-                (record.standard_price or 0.0) +
-                (record.labelled_product.standard_price or 0.0) +
-                (record.packaging_product.standard_price or 0.0)
-            )
+            record.cog_before_sale = record.standard_price or 0.0
 
     @api.model_create_multi
     def create(self, vals_list):
