@@ -16,10 +16,12 @@ class InventorySohReport(models.Model):
           packaging costs, overstating the value of a stock variance)
         - qty_on_hand/qty_inward/qty_consumption/qty_return/qty_wastage/
           ideal_soh/actual_soh/variance are shown in kg (not grams) for
-          any product whose Unit of Measure is grams, OR whose real done
-          stock moves were actually recorded in grams even though its own
-          Unit of Measure field says something else (a data-setup mismatch
-          found on 92 products, e.g. Rock salt)
+          products whose Unit of Measure is grams
+        - (2026-11-23) every move/scrap quantity is converted to the
+          product's own UoM first (e.g. a 300 g MO line on a product in
+          Units/kg counts as 0.3). Replaces the old rule that treated any
+          product with a gram move as a gram product and divided all its
+          columns, including kg stock, by 1000.
         - Weekly count (soh.week):
             * new Opening column = Actual SOH of the last closed week (the
               first week starts from on-hand stock when it was opened)
@@ -232,10 +234,15 @@ class InventorySohReport(models.Model):
             inward AS (
                 SELECT
                     sm.product_id,
-                    SUM(sm.quantity)              AS qty_inward
+                    SUM(sm.quantity / mu.factor * pu.factor) AS qty_inward
                 FROM stock_move sm
                 JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                 JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                 JOIN stock_picking     sp    ON sp.id       = sm.picking_id
                 JOIN stock_picking_type spt  ON spt.id      = sp.picking_type_id
                 WHERE sm.state         = 'done'
@@ -253,10 +260,15 @@ class InventorySohReport(models.Model):
             returns AS (
                 SELECT
                     sm.product_id,
-                    SUM(sm.quantity)              AS qty_return
+                    SUM(sm.quantity / mu.factor * pu.factor) AS qty_return
                 FROM stock_move sm
                 JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                 JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                 JOIN stock_picking     sp    ON sp.id       = sm.picking_id
                 WHERE sm.state         = 'done'
                   AND sm.date         >= (SELECT ts FROM week_start)
@@ -277,10 +289,15 @@ class InventorySohReport(models.Model):
                 SELECT product_id, SUM(qty) AS qty_consumption
                 FROM (
                     -- Deliveries to customers
-                    SELECT sm.product_id, sm.quantity AS qty
+                    SELECT sm.product_id, sm.quantity / mu.factor * pu.factor AS qty
                     FROM stock_move sm
                     JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                     JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                     WHERE sm.state        = 'done'
                       AND sm.date        >= (SELECT ts FROM week_start)
                       AND loc_src.usage   = 'internal'
@@ -289,10 +306,15 @@ class InventorySohReport(models.Model):
                     UNION ALL
 
                     -- Customer returns (subtracted)
-                    SELECT sm.product_id, -sm.quantity AS qty
+                    SELECT sm.product_id, -(sm.quantity / mu.factor * pu.factor) AS qty
                     FROM stock_move sm
                     JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                     JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                     WHERE sm.state        = 'done'
                       AND sm.date        >= (SELECT ts FROM week_start)
                       AND loc_src.usage   = 'customer'
@@ -301,10 +323,15 @@ class InventorySohReport(models.Model):
                     UNION ALL
 
                     -- Components consumed in manufacturing orders
-                    SELECT sm.product_id, sm.quantity AS qty
+                    SELECT sm.product_id, sm.quantity / mu.factor * pu.factor AS qty
                     FROM stock_move sm
                     JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                     JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                     WHERE sm.state        = 'done'
                       AND sm.date        >= (SELECT ts FROM week_start)
                       AND loc_src.usage   = 'internal'
@@ -318,10 +345,15 @@ class InventorySohReport(models.Model):
             produced AS (
                 SELECT
                     sm.product_id,
-                    SUM(sm.quantity)              AS qty_produced
+                    SUM(sm.quantity / mu.factor * pu.factor) AS qty_produced
                 FROM stock_move sm
                 JOIN stock_location loc_src  ON loc_src.id  = sm.location_id
                 JOIN stock_location loc_dest ON loc_dest.id = sm.location_dest_id
+                -- move quantity converted to the product's own UoM (e.g. 300 g -> 0.3 Units/kg)
+                JOIN uom_uom mu ON mu.id = sm.product_uom
+                JOIN product_product mpp ON mpp.id = sm.product_id
+                JOIN product_template mpt ON mpt.id = mpp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = mpt.uom_id
                 WHERE sm.state         = 'done'
                   AND sm.date         >= (SELECT ts FROM week_start)
                   AND sm.production_id IS NOT NULL
@@ -343,21 +375,16 @@ class InventorySohReport(models.Model):
             wastage AS (
                 SELECT
                     ss.product_id,
-                    SUM(ss.scrap_qty)             AS qty_wastage
+                    SUM(ss.scrap_qty / su.factor * pu.factor) AS qty_wastage
                 FROM stock_scrap ss
+                -- scrap quantity converted to the product's own UoM
+                JOIN uom_uom su ON su.id = ss.product_uom_id
+                JOIN product_product spp ON spp.id = ss.product_id
+                JOIN product_template spt ON spt.id = spp.product_tmpl_id
+                JOIN uom_uom pu ON pu.id = spt.uom_id
                 WHERE ss.state = 'done'
                   AND ss.date_done >= (SELECT ts FROM week_start)
                 GROUP BY ss.product_id
-            ),
-
-            -- ─── Products actually transacted in grams, regardless of what
-            --     their own master "Unit of Measure" field says (e.g. Rock
-            --     salt: UoM field "Units", but every real move in grams).
-            gram_products AS (
-                SELECT DISTINCT sm.product_id
-                FROM stock_move sm
-                JOIN uom_uom mu ON mu.id = sm.product_uom
-                WHERE sm.state = 'done' AND mu.name->>'en_US' = 'g'
             ),
 
             -- ─── Raw SELECT (everything in the product's own stored UoM) ──────
@@ -378,30 +405,21 @@ class InventorySohReport(models.Model):
                     pt.uom_id,
                     COALESCE(pp.default_code, pt.default_code)  AS sku,
 
-                    -- Report-display kg conversion: 0.001 (grams -> kg) if
-                    -- the product's UoM field says "g" or its real done moves
-                    -- were recorded in grams; otherwise 1. Display only.
+                    -- Report-display kg conversion: every quantity above is
+                    -- already in the product's own UoM, so only products whose
+                    -- UoM is "g" are shown in kg (x 0.001). Display only.
                     CASE
                         WHEN uu.name->>'en_US' = 'g' THEN 0.001
-                        WHEN gp.product_id IS NOT NULL THEN 0.001
                         ELSE 1
                     END                                         AS kg_factor,
                     CASE
                         WHEN uu.name->>'en_US' = 'g' THEN 'kg'
-                        WHEN gp.product_id IS NOT NULL THEN 'kg'
                         ELSE uu.name->>'en_US'
                     END                                         AS uom_display,
 
-                    -- Factor to turn a stored quantity into the unit its Cost
-                    -- price is entered in. Products whose UoM is really "g"
-                    -- have Cost per gram (1). Products whose UoM field says
-                    -- "Units" but whose moves are in grams have Cost per kg,
-                    -- so grams x 0.001. Everything else: 1.
-                    CASE
-                        WHEN uu.name->>'en_US' = 'g' THEN 1
-                        WHEN gp.product_id IS NOT NULL THEN 0.001
-                        ELSE 1
-                    END                                         AS cost_qty_factor,
+                    -- Cost price is per product UoM and every quantity is now
+                    -- in the product UoM, so no extra factor is needed.
+                    1                                           AS cost_qty_factor,
 
                     COALESCE(op.qty_opening,     0)             AS qty_opening,
                     COALESCE(oh.qty_on_hand,     0)             AS qty_on_hand,
@@ -439,7 +457,6 @@ class InventorySohReport(models.Model):
                 FROM product_product pp
                 JOIN product_template pt ON pt.id = pp.product_tmpl_id
                 LEFT JOIN uom_uom     uu ON uu.id = pt.uom_id
-                LEFT JOIN gram_products gp ON gp.product_id = pp.id
 
                 LEFT JOIN opening     op ON op.product_id = pp.id
                 LEFT JOIN onhand      oh ON oh.product_id = pp.id
