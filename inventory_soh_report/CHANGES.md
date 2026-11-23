@@ -547,3 +547,9 @@ module is unchanged.
   from Ideal SOH (variance ≠ 0) and opens grouped by Month, then Week.
 - (2026-11-17) SOH Weekly History menu entry removed; it opens only from the
   "History" button on the Inventory SOH Report.
+- (2026-11-19, testing aid) On a CLOSED week, an Administrator can edit the
+  week's Name, Started On and Closed On in the SOH Weekly History form, so
+  test history can be spread over past months (Month grouping in SOH History
+  by Product follows Closed On). The open week and non-admins are blocked
+  (write() guard; Closed On cannot be before Started On). Closing a week and
+  everything else is unchanged. Remove or re-lock after testing.
