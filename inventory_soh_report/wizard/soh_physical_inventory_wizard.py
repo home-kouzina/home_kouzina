@@ -28,6 +28,7 @@ COLUMNS = [
     ('ID', 8),
     ('SKU', 18),
     ('Product', 55),
+    ('Type of Product', 18),
     (COUNT_COLUMN, 18),
 ]
 # Files downloaded before this change named the count column "Actual SOH".
@@ -159,10 +160,11 @@ class SohPhysicalInventoryWizard(models.TransientModel):
             sheet.write_number(r, 0, row.product_id.id)
             sheet.write_string(r, 1, row.sku or '')
             sheet.write_string(r, 2, row.product_id.display_name or '')
+            sheet.write_string(r, 3, row.product_category_type or '')
             if row.product_id.is_storable:
-                sheet.write_number(r, 3, round(row.ideal_soh, 3), fmt_count)
+                sheet.write_number(r, 4, round(row.ideal_soh, 3), fmt_count)
             else:
-                sheet.write_blank(r, 3, None, fmt_count)  # stock not tracked
+                sheet.write_blank(r, 4, None, fmt_count)  # stock not tracked
 
         sheet.freeze_panes(1, 3)
         sheet.autofilter(0, 0, max(len(rows), 1), len(COLUMNS) - 1)
