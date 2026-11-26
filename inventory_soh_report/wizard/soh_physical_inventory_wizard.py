@@ -28,7 +28,7 @@ COLUMNS = [
     ('ID', 8),
     ('SKU', 18),
     ('Product', 55),
-    ('Type of Product', 18),
+    ('Type of Product',  18),
     (COUNT_COLUMN, 18),
 ]
 # Files downloaded before this change named the count column "Actual SOH".
